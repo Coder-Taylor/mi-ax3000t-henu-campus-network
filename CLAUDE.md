@@ -19,17 +19,17 @@
 ## 当前运行状态
 - **WAN**: phy1-sta0 (5G) → henu-student → IP 10.36.82.65 → 已认证
 - **LAN**: br-lan (192.168.1.1), DHCP 分配宿舍设备
-- **AP 2.4G**: phy0-ap0, SSID `可以和我在一起吗`, WPA2加密, ch1/20MHz
-- **AP 5G**: phy1-ap0, SSID `可以和我在一起吗-5G`, WPA2加密, ch52/40MHz
+- **AP 2.4G**: phy0-ap0, SSID `<见 credentials.txt>`, WPA2加密, ch1/20MHz
+- **AP 5G**: phy1-ap0, SSID `<见 credentials.txt>-5G`, WPA2加密, ch52/40MHz
 - **信道**: 5GHz 已锁定 ch52（避免 ACS 触发 radio reset）
 - **守护进程**: fast_recovery_daemon 每秒检测，秒级恢复（替代 cron 20秒轮询）
 - **认证检测**: cron 每3分钟自动检测/重连
 
 ## 关键信息
 - 路由器: `192.168.1.1` / `ssh ax3000t`（免密）
-- Web管理: `http://192.168.1.1`（root / Czj20070312#）
-- WiFi: `可以和我在一起吗` / `好呀我也喜欢你!`
-- 校园网: `2510250328` / `386095` / `@henuyd`
+- Web管理: `http://192.168.1.1`（root / `<见 credentials.txt>`）
+- WiFi: `<见 credentials.txt>` / `<见 credentials.txt>`
+- 校园网: `<见 credentials.txt>` / `<见 credentials.txt>` / `@<见 credentials.txt>`
 - 认证脚本: `/etc/campus_network/auto_login.sh` (v2.0，含路由恢复)
 - 快速恢复守护进程: `/etc/campus_network/fast_recovery_daemon.sh` (每秒检测，秒级恢复)
 - 路由看门狗: `/etc/campus_network/route_watchdog.sh` (已被快速恢复守护进程替代)
