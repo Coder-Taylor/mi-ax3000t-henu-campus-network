@@ -1,0 +1,2286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AX3000T 校园网自动认证 · 完整学习笔记</title>
+<style>
+  /* ====== 打印样式 ====== */
+  @page {
+    size: A4;
+    margin: 2cm 2.2cm;
+    @bottom-center {
+      content: "第 " counter(page) " 页";
+      font-size: 9pt;
+      color: #888;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+  }
+
+  /* ====== 基础样式 ====== */
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --accent: #2563eb;
+    --code-bg: #f1f5f9;
+    --border: #e2e8f0;
+    --dim: #64748b;
+    --green: #16a34a;
+    --red: #dc2626;
+    --yellow: #ca8a04;
+    --blockquote-bg: #f8fafc;
+    --blockquote-border: #3b82f6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+    font-size: 12pt;
+    line-height: 1.75;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 1cm 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ====== 标题层级 ====== */
+  h1 {
+    font-size: 2em;
+    text-align: center;
+    margin: 1.5em 0 0.6em;
+    padding-bottom: 0.3em;
+    border-bottom: 3px double var(--accent);
+    color: #0f172a;
+    page-break-before: always;
+  }
+  h1:first-of-type { page-break-before: avoid; }
+  h2 {
+    font-size: 1.5em;
+    margin: 1.8em 0 0.6em;
+    padding: 0.3em 0;
+    border-bottom: 2px solid var(--border);
+    color: #1e3a5f;
+  }
+  h3 {
+    font-size: 1.2em;
+    margin: 1.2em 0 0.4em;
+    color: #334155;
+  }
+  h4 {
+    font-size: 1.05em;
+    margin: 1em 0 0.3em;
+    color: #475569;
+  }
+
+  /* ====== 段落和行内元素 ====== */
+  p { margin: 0.6em 0; text-align: justify; }
+  strong { color: #0f172a; }
+  em { color: #475569; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ====== 代码 ====== */
+  code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    word-break: break-all;
+  }
+  pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1em 1.2em;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.55;
+    margin: 0.8em 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+  }
+
+  /* ====== 引用块 ====== */
+  blockquote {
+    margin: 1em 0;
+    padding: 0.6em 1em;
+    border-left: 4px solid var(--blockquote-border);
+    background: var(--blockquote-bg);
+    border-radius: 0 4px 4px 0;
+    color: #475569;
+  }
+  blockquote p { margin: 0.3em 0; }
+
+  /* ====== 表格 ====== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.95em;
+  }
+  th {
+    background: #1e3a5f;
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  tr:hover td { background: #e8f0fe; }
+
+  /* ====== 水平线 ====== */
+  hr {
+    border: none;
+    border-top: 2px dashed var(--border);
+    margin: 2em 0;
+  }
+
+  /* ====== 列表 ====== */
+  ul, ol { padding-left: 1.8em; margin: 0.6em 0; }
+  li { margin: 0.3em 0; }
+
+  /* ====== 特殊标记 ====== */
+  .emoji { font-style: normal; }
+
+  /* ====== 封面信息 ====== */
+  .cover-info {
+    text-align: center;
+    color: var(--dim);
+    font-size: 0.95em;
+    margin: 1em 0 2em;
+  }
+
+  /* ====== 打印优化 ====== */
+  @media print {
+    body { font-size: 10.5pt; line-height: 1.65; }
+    h1 { page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    h2 { page-break-after: avoid; }
+    h3, h4 { page-break-after: avoid; }
+    pre, blockquote, table { page-break-inside: avoid; }
+    a { color: inherit; }
+  }
+
+  /* ====== 目录样式 ====== */
+  .toc { background: #f8fafc; padding: 1em 1.5em; border-radius: 8px; margin: 1.5em 0; }
+  .toc a { display: block; padding: 2px 0; }
+</style>
+</head>
+<body>
+
+<hr />
+<p>name: dev-log<br />
+description: AX3000T 校园网项目完整开发日志——面向小白的教学级记录，含每条命令的解释和背后的原理<br />
+metadata: <br />
+  node_type: memory<br />
+  type: project<br />
+  originSessionId: c2b6f530-7381-46a9-abf0-1d8c120170ac</p>
+<hr />
+<h1 id="ax3000t">AX3000T 校园网自动认证 · 完整开发日志</h1>
+<blockquote>
+<p>本文档既是开发日志，也是教学材料。<br />
+目标读者：只懂 SSH 基本概念的小白。<br />
+读完本文，你不仅知道"做了什么"，更会理解"为什么这么做"以及"背后的原理是什么"。</p>
+</blockquote>
+<hr />
+<h2 id="_1">目录</h2>
+<ol>
+<li><a href="#phase0">前置知识：你需要理解的 5 个核心概念</a></li>
+<li><a href="#phase1">Phase 1：路由器现状勘查</a></li>
+<li><a href="#phase2">Phase 2：安全加固</a></li>
+<li><a href="#phase3">Phase 3：WiFi WAN 配置</a></li>
+<li><a href="#phase4">Phase 4：校园网认证脚本</a></li>
+<li><a href="#phase5">Phase 5：定时重连 &amp; NAT 修复</a></li>
+<li><a href="#pitfalls">踩坑记录 &amp; 故障排查技巧</a></li>
+</ol>
+<hr />
+<p><a name="phase0"></a></p>
+<h2 id="phase-05">Phase 0：前置知识——5 个核心概念</h2>
+<p>在理解我们做了什么之前，先建立这 5 个概念。它们贯穿了整个项目。</p>
+<hr />
+<h3 id="1ssh">概念 1：SSH——我们如何"进入"路由器</h3>
+<div class="codehilite"><pre><span></span><code>你的电脑（Windows）                          路由器（Linux）
+┌─────────────────┐                    ┌──────────────────┐
+│  ssh root@      │  ───加密通道───▶   │  dropbear (SSH)   │
+│  192.168.1.1    │                    │  在 192.168.1.1   │
+│                 │  ◀───命令输出────  │  端口 22 监听      │
+└─────────────────┘                    └──────────────────┘
+</code></pre></div>
+
+<ul>
+<li><strong>SSH</strong> = Secure Shell。它在你和路由器之间建立一条<strong>加密的隧道</strong>。</li>
+<li>你敲的命令通过隧道发过去，路由器执行后把结果通过隧道传回来。</li>
+<li>OpenWrt 使用的 SSH 服务器叫 <strong>dropbear</strong>（比标准 OpenSSH 更轻量，适合嵌入式设备）。</li>
+<li>连接命令：<code>ssh root@192.168.1.1</code>。<code>root</code> 是用户名，<code>192.168.1.1</code> 是路由器的 IP。</li>
+<li><strong>端口 22</strong> 是 SSH 的默认端口。路由器上的 dropbear 一直在这个端口等待连接。</li>
+</ul>
+<hr />
+<h3 id="2overlayfs">概念 2：OverlayFS——为什么重启不会丢失配置</h3>
+<p>这是理解 OpenWrt 系统的关键。普通 Linux 安装到一个硬盘分区，OpenWrt 则用了一种叫 <strong>overlayfs</strong> 的叠层文件系统：</p>
+<div class="codehilite"><pre><span></span><code><span class="w">                   </span><span class="err">你看到的完整文件系统</span><span class="w"> </span><span class="p">(</span><span class="o">/</span><span class="p">)</span>
+<span class="w">                  </span><span class="err">┌──────────────────────────┐</span>
+<span class="w">                  </span><span class="err">│</span><span class="w">  </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="n">network</span><span class="w">     </span><span class="err">│</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="err">你修改的版本（来自</span><span class="w"> </span><span class="n">upper</span><span class="err">）</span>
+<span class="w">                  </span><span class="err">│</span><span class="w">  </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="n">wireless</span><span class="w">    </span><span class="err">│</span>
+<span class="w">                  </span><span class="err">│</span><span class="w">  </span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">my</span><span class="o">-</span><span class="n">script</span><span class="p">.</span><span class="n">sh</span><span class="w">   </span><span class="err">│</span>
+<span class="w">                  </span><span class="err">└──────────────────────────┘</span>
+<span class="w">                          </span><span class="err">▲</span>
+<span class="w">            </span><span class="err">┌─────────────┴─────────────┐</span>
+<span class="w">            </span><span class="err">│</span><span class="w">     </span><span class="o">/</span><span class="n">overlay</span><span class="w"> </span><span class="p">(</span><span class="err">可写层</span><span class="p">)</span><span class="w">       </span><span class="err">│</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="n">ubifs</span><span class="err">，存在</span><span class="w"> </span><span class="n">NAND</span><span class="w"> </span><span class="n">Flash</span><span class="w"> </span><span class="err">上</span>
+<span class="w">            </span><span class="err">│</span><span class="w">     </span><span class="err">你的所有修改在这</span><span class="w">         </span><span class="err">│</span><span class="w">     </span><span class="err">重启→保留</span><span class="w"> </span><span class="err">✅</span>
+<span class="w">            </span><span class="err">│</span><span class="w">     </span><span class="err">大小：</span><span class="mh">58</span><span class="n">MB</span><span class="w">              </span><span class="err">│</span>
+<span class="w">            </span><span class="err">└───────────────────────────┘</span>
+<span class="w">                          </span><span class="err">▲</span><span class="w">  </span><span class="err">覆盖在上面</span>
+<span class="w">            </span><span class="err">┌─────────────────────────────┐</span>
+<span class="w">            </span><span class="err">│</span><span class="w">     </span><span class="o">/</span><span class="n">rom</span><span class="w"> </span><span class="p">(</span><span class="err">只读层</span><span class="p">)</span><span class="w">            </span><span class="err">│</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="n">squashfs</span><span class="err">，出厂固件</span>
+<span class="w">            </span><span class="err">│</span><span class="w">     </span><span class="err">原始系统文件</span><span class="w">              </span><span class="err">│</span><span class="w">     </span><span class="err">永远不被修改</span>
+<span class="w">            </span><span class="err">│</span><span class="w">     </span><span class="err">大小：</span><span class="mf">7.8</span><span class="n">MB</span><span class="err">（已满）</span><span class="w">       </span><span class="err">│</span>
+<span class="w">            </span><span class="err">└─────────────────────────────┘</span>
+</code></pre></div>
+
+<p><strong>关键理解</strong>：<br />
+- <code>/rom</code> 是出厂固件，是只读的（squashfs 压缩文件系统）。<br />
+- <code>/overlay</code> 是空白的 writable 层（ubifs），存你的所有修改。<br />
+- 当你"修改" <code>/etc/config/network</code> 时，实际是：原始文件在 <code>/rom/etc/config/network</code>（只读），修改版本写到 <code>/overlay/upper/etc/config/network</code>。你看到的是上覆下。<br />
+- <strong>恢复出厂设置 = 清空 <code>/overlay</code></strong>。重启不会丢，因为 overlay 在 NAND Flash 上。<br />
+- 这就是为什么我们说你的系统是"固化"的——不是临时的 initramfs。</p>
+<hr />
+<h3 id="3uciopenwrt">概念 3：UCI——OpenWrt 的统一配置系统</h3>
+<p>传统 Linux 你要改网络就编辑 <code>/etc/network/interfaces</code>，改 WiFi 就编辑 <code>/etc/hostapd.conf</code>，改防火墙就改 <code>iptables</code> 规则……每个服务的配置文件格式都不同。</p>
+<p><strong>OpenWrt 的解决方案：UCI（Unified Configuration Interface）</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="w">    </span><span class="err">你（用户）</span>
+<span class="w">       </span><span class="err">│</span>
+<span class="w">       </span><span class="err">▼</span>
+<span class="w">    </span><span class="n">UCI</span><span class="w"> </span><span class="err">命令（</span><span class="n">uci</span><span class="w"> </span><span class="n">set</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">uci</span><span class="w"> </span><span class="n">get</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">uci</span><span class="w"> </span><span class="n">commit</span><span class="err">）</span>
+<span class="w">       </span><span class="err">│</span>
+<span class="w">       </span><span class="err">▼</span>
+<span class="w">    </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="w"> </span><span class="err">下的统一配置文件</span>
+<span class="w">    </span><span class="err">├──</span><span class="w"> </span><span class="n">network</span><span class="w">   </span><span class="err">←</span><span class="w"> </span><span class="err">网络接口、</span><span class="n">IP</span><span class="err">、</span><span class="n">DHCP</span>
+<span class="w">    </span><span class="err">├──</span><span class="w"> </span><span class="n">wireless</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="n">AP</span><span class="o">/</span><span class="n">STA</span><span class="err">、</span><span class="n">SSID</span><span class="err">、密码</span>
+<span class="w">    </span><span class="err">├──</span><span class="w"> </span><span class="n">firewall</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="err">防火墙区域、</span><span class="n">NAT</span><span class="err">、转发规则</span>
+<span class="w">    </span><span class="err">├──</span><span class="w"> </span><span class="n">dhcp</span><span class="w">      </span><span class="err">←</span><span class="w"> </span><span class="n">DNS</span><span class="err">、</span><span class="n">DHCP</span><span class="w"> </span><span class="err">租约</span>
+<span class="w">    </span><span class="err">└──</span><span class="w"> </span><span class="n">system</span><span class="w">    </span><span class="err">←</span><span class="w"> </span><span class="err">主机名、时区</span>
+<span class="w">       </span><span class="err">│</span>
+<span class="w">       </span><span class="err">▼</span>
+<span class="w">    </span><span class="err">各服务的初始化脚本自动把</span><span class="w"> </span><span class="n">UCI</span><span class="w"> </span><span class="err">配置翻译成服务自己的配置文件</span>
+</code></pre></div>
+
+<p><strong>命令示例</strong>：</p>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.ssid<span class="o">=</span><span class="s1">&#39;henu-student&#39;</span><span class="w">   </span><span class="c1"># 设置 WiFi SSID</span>
+uci<span class="w"> </span>get<span class="w"> </span>network.lan.ipaddr<span class="w">                              </span><span class="c1"># 查看 LAN IP</span>
+uci<span class="w"> </span>commit<span class="w"> </span>wireless<span class="w">                                     </span><span class="c1"># 保存修改</span>
+wifi<span class="w"> </span>reload<span class="w">                                             </span><span class="c1"># 让 WiFi 服务重新读取配置</span>
+</code></pre></div>
+
+<hr />
+<h3 id="4nat">概念 4：NAT 和防火墙——路由器怎么"分享"网络</h3>
+<p>这是路由器的核心功能。假设路由器有两个接口：</p>
+<div class="codehilite"><pre><span></span><code>  WAN 侧（校园网）                    LAN 侧（宿舍）
+  IP: 10.36.82.65                    IP: 192.168.1.0/24
+  ┌─────────────┐                   ┌─────────────┐
+  │ phy1-sta0   │                   │ br-lan      │
+  │ (5G STA)    │                   │ (LAN桥接)    │
+  └──────┬──────┘                   └──────┬──────┘
+         │                                 │
+         └─────────── 路由器 ──────────────┘
+                       │
+                    转发 + NAT
+</code></pre></div>
+
+<p><strong>NAT（网络地址转换）做了什么</strong>：</p>
+<div class="codehilite"><pre><span></span><code>你手机 (192.168.1.249) → 发请求到 baidu.com (110.242.74.102)
+
+手机的原始包：
+  源IP: 192.168.1.249   →  目的IP: 110.242.74.102
+
+路由器 NAT 后：
+  源IP: 10.36.82.65     →  目的IP: 110.242.74.102
+  (192.168.1.249 被替换成了路由器的 WAN IP)
+
+baidu.com 回复：
+  源IP: 110.242.74.102  →  目的IP: 10.36.82.65
+
+路由器收到回复，反向 NAT：
+  源IP: 110.242.74.102  →  目的IP: 192.168.1.249
+  (路由器的 WAN IP 被替换回你手机的 LAN IP)
+</code></pre></div>
+
+<p><strong>没有 NAT 会怎样？</strong> 手机的私有 IP（192.168.x.x）在公网上不可路由，baidu 无法回复。NAT 让所有宿舍设备的流量看起来都来自路由器自己的 WAN IP。</p>
+<p><strong>OpenWrt 24.10 使用 nftables</strong>（不是老旧的 iptables）。防火墙规则由 <code>fw4</code>（firewall4）从 UCI 配置自动生成。</p>
+<hr />
+<h3 id="5wifi-ap-vs-sta">概念 5：WiFi 的两种模式——AP vs STA</h3>
+<p>一个 WiFi 芯片（radio）只能工作在一种模式下……吗？实际上可以同时创建多个<strong>虚拟接口（VIF）</strong>，但功能有限制。</p>
+<div class="codehilite"><pre><span></span><code>AP 模式（Access Point，接入点）     STA 模式（Station，客户端）
+你手机连 WiFi 热点的模式          你手机连家里的 WiFi 路由器的模式
+┌─────────────┐                    ┌─────────────┐
+│  发射WiFi信号 │                    │  接收WiFi信号 │
+│  让别人连     │                    │  去连别人     │
+│  SSID: xxx   │                    │  连 SSID: xxx │
+└─────────────┘                    └─────────────┘
+   路由器做热点                          路由器做客户端
+</code></pre></div>
+
+<p>我们最后的状态：<br />
+- <strong>radio0 (2.4G)</strong>: AP 模式 → 发射 <code>可以和我在一起吗</code> 给宿舍用<br />
+- <strong>radio1 (5G)</strong>: STA 模式 → 连接 <code>henu-student</code> 作为上网出口</p>
+<hr />
+<p><a name="phase1"></a></p>
+<h2 id="phase-12026-06-04">Phase 1：路由器现状勘查（2026-06-04）</h2>
+<h3 id="_2">目标</h3>
+<p>搞清楚路由器当前刷了什么系统、处于什么状态、能不能永久保存配置。</p>
+<h3 id="_3">操作与分析</h3>
+<h4 id="11-ssh">1.1 建立 SSH 连接</h4>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>root@192.168.1.1
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：SSH 连接的三个要素——<code>用户名@IP地址</code>。<code>root</code> 是 Linux 的超级管理员账户，拥有最高权限。<code>192.168.1.1</code> 是路由器的 LAN 口 IP，是最常见的默认网关地址。我们通过网线连在路由器的 LAN4 口，所以能访问这个 IP。</p>
+</blockquote>
+<h4 id="12">1.2 查看操作系统版本</h4>
+<div class="codehilite"><pre><span></span><code>cat<span class="w"> </span>/etc/os-release
+</code></pre></div>
+
+<p>输出：</p>
+<div class="codehilite"><pre><span></span><code>NAME=&quot;ImmortalWrt&quot;
+VERSION=&quot;24.10.5&quot;
+OPENWRT_BOARD=&quot;mediatek/filogic&quot;
+OPENWRT_ARCH=&quot;aarch64_cortex-a53&quot;
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<code>cat</code> 是 "concatenate" 的缩写，但实际作用就是"打印文件内容到屏幕"。<code>/etc/os-release</code> 是 Linux 标准的系统信息文件。我们看到：<br />
+- <strong>ImmortalWrt</strong>：这是 OpenWrt 的一个中国社区维护的衍生版（对中文用户更友好，预装中文语言包和国内镜像源）。<br />
+- <strong>24.10.5</strong>：版本号。24 是年份，10 是月份，5 是小版本。<br />
+- <strong>mediatek/filogic</strong>：硬件平台。你的 AX3000T 使用联发科 MT7981B（Filogic 820）芯片。<br />
+- <strong>aarch64</strong>：ARM 64 位架构，和手机 CPU 同类型。</p>
+</blockquote>
+<h4 id="13">1.3 确认系统是否固化（最关键的问题）</h4>
+<div class="codehilite"><pre><span></span><code>mount<span class="w">          </span><span class="c1"># 查看所有挂载点</span>
+df<span class="w"> </span>-h<span class="w">          </span><span class="c1"># 查看磁盘使用</span>
+cat<span class="w"> </span>/proc/mtd<span class="w">  </span><span class="c1"># 查看闪存分区表</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <code>mount</code> 显示当前所有文件系统的挂载情况。Linux 中一切皆文件，磁盘分区要挂载到目录才能访问。<br />
+- <code>df -h</code> 显示磁盘使用情况，<code>-h</code> 是 "human-readable"（比如显示 58M 而不是 589824）。<br />
+- <code>/proc/mtd</code> 是内核暴露的闪存分区信息。<code>/proc</code> 是一个虚拟文件系统，里面的文件不占磁盘，是内核实时生成的。</p>
+</blockquote>
+<p><strong>关键输出</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="o">/</span><span class="nx">dev</span><span class="o">/</span><span class="nx">root</span><span class="w"> </span><span class="nx">on</span><span class="w"> </span><span class="o">/</span><span class="nx">rom</span><span class="w"> </span><span class="k">type</span><span class="w"> </span><span class="nx">squashfs</span><span class="w"> </span><span class="p">(</span><span class="nx">ro</span><span class="p">)</span><span class="w">     </span><span class="err">←</span><span class="w"> </span><span class="nx">只读固件层</span>
+<span class="o">/</span><span class="nx">dev</span><span class="o">/</span><span class="nx">ubi0_1</span><span class="w"> </span><span class="nx">on</span><span class="w"> </span><span class="o">/</span><span class="nx">overlay</span><span class="w"> </span><span class="k">type</span><span class="w"> </span><span class="nx">ubifs</span><span class="w"> </span><span class="p">(</span><span class="nx">rw</span><span class="p">)</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="nx">可写数据层</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="nx">这个存在</span><span class="err">！</span>
+<span class="nx">overlayfs</span><span class="p">:</span><span class="o">/</span><span class="nx">overlay</span><span class="w"> </span><span class="nx">on</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="k">type</span><span class="w"> </span><span class="nx">overlay</span><span class="w">     </span><span class="err">←</span><span class="w"> </span><span class="nx">叠层后的完整系统</span>
+</code></pre></div>
+
+<p>分区表：</p>
+<div class="codehilite"><pre><span></span><code>mtd8: 34MB  ubi_kernel    ← 内核 + 固件
+mtd9: 78MB  ubi           ← 用户数据（可写 overlay）
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>"ubi"是什么意思？</strong> UBI = Unsorted Block Images，是专门为 NAND Flash 设计的存储管理层。NAND Flash 有坏块和磨损问题，UBI 帮你处理这些。<br />
+- <strong>为什么是 mtd8 和 mtd9 而不是 /dev/sda1？</strong> 嵌入式设备没有硬盘。MTD = Memory Technology Device，是 Linux 对 NOR/NAND Flash 的抽象。<br />
+- <strong>判断结论</strong>：因为看到了 <code>/dev/ubi0_1</code> 挂载为 <code>/overlay</code>（ubifs 格式，rw=可读写），说明系统已经<strong>固化</strong>。如果是在 initramfs 模式，就没有这个 ubifs overlay。</p>
+</blockquote>
+<h4 id="14">1.4 查看当前网络和无线配置</h4>
+<div class="codehilite"><pre><span></span><code>cat<span class="w"> </span>/etc/config/network<span class="w">    </span><span class="c1"># 网络接口配置</span>
+cat<span class="w"> </span>/etc/config/wireless<span class="w">   </span><span class="c1"># 无线配置</span>
+cat<span class="w"> </span>/etc/config/firewall<span class="w">   </span><span class="c1"># 防火墙配置</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<code>/etc/config/</code> 是 OpenWrt UCI 的配置目录。每个文件对应一个子系统。配置格式类似 INI 文件但有特定语法。</p>
+</blockquote>
+<p><strong>关键发现</strong>：<br />
+- LAN IP：<code>192.168.1.1</code>，桥接接口 <code>br-lan</code> 包含 lan2、lan3、lan4（lan1 被用作 WAN）<br />
+- WiFi：2.4G 和 5G 都是 AP 模式，SSID 为 <code>ImmortalWrt</code>，<strong>无加密</strong>（安全风险！）<br />
+- 系统无 root 密码（SSH 和 Web 都可无密码进入）</p>
+<h4 id="15">1.5 确认硬件型号</h4>
+<div class="codehilite"><pre><span></span><code>ubus<span class="w"> </span>call<span class="w"> </span>system<span class="w"> </span>board
+</code></pre></div>
+
+<p>输出确认：<code>"model": "Xiaomi Mi Router AX3000T"</code></p>
+<blockquote>
+<p><strong>小白学</strong>：<code>ubus</code> 是 OpenWrt 的进程间通信总线。你可以把它理解成"系统信息的 API 接口"——各种服务把信息注册到 ubus，其他程序（包括 LuCI Web 界面）通过 ubus 查询。</p>
+</blockquote>
+<h3 id="phase-1">Phase 1 结论</h3>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>答案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>系统是什么？</td>
+<td>ImmortalWrt 24.10.5（OpenWrt 衍生版）</td>
+</tr>
+<tr>
+<td>固件固化了吗？</td>
+<td>✅ 已固化，overlay 在 NAND 上，重启不丢失</td>
+</tr>
+<tr>
+<td>分区方案？</td>
+<td>大分区版（mtd9 ubi 78MB，可用 58MB）</td>
+</tr>
+<tr>
+<td>有哪些安全问题？</td>
+<td>WiFi 无密码、root 无密码</td>
+</tr>
+<tr>
+<td>能开始配置吗？</td>
+<td>可以</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><a name="phase2"></a></p>
+<h2 id="phase-2">Phase 2：安全加固</h2>
+<h3 id="_4">目标</h3>
+<p>设置 root 密码、SSH 免密登录、WiFi 加密。</p>
+<h3 id="21-root-busybox">2.1 设置 root 密码——第一课：busybox 的坑</h3>
+<p><strong>第一次尝试</strong>（在我们的电脑上执行）：</p>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>root@192.168.1.1<span class="w"> </span><span class="s2">&quot;echo -e &#39;Czj20070312#\nCzj20070312#&#39; | passwd root&quot;</span>
+</code></pre></div>
+
+<p><code>passwd</code> 报告成功，但后来发现无法用新密码登录。</p>
+<blockquote>
+<p><strong>坑点分析</strong>：问题的根源在于 <strong>OpenWrt 使用 busybox</strong>。</p>
+<p><strong>什么是 busybox？</strong> 嵌入式 Linux 不用标准 GNU 工具（太大），而是用一个叫 busybox 的精简替代品。busybox 把所有常用命令（<code>ls</code>、<code>cat</code>、<code>echo</code>、<code>sh</code> 等）打包成一个程序。</p>
+<p><strong>busybox 的 <code>echo</code> 不支持 <code>-e</code></strong>！当你写 <code>echo -e 'xxx\nxxx'</code>，busybox 原样输出 <code>-e xxx\nxxx</code>，<code>\n</code> 没有被翻译成换行。这导致 <code>passwd</code> 把 <code>-e Czj20070312#\nCzj20070312#</code> 当成了密码（一整行，包含 <code>\n</code> 字面字符）。</p>
+<p><strong>教训</strong>：嵌入式环境用 <code>printf</code> 代替 <code>echo -e</code>，因为 <code>printf</code> 的行为是标准化的。</p>
+</blockquote>
+<p><strong>正确做法</strong>（第二次）：</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Czj20070312#\nCzj20070312#\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>passwd<span class="w"> </span>root
+</code></pre></div>
+
+<p><code>printf</code> 的 <code>\n</code> 行为在所有 shell 中都是一致的。</p>
+<h3 id="22-ssh">2.2 SSH 密钥免密登录——核心安全实践</h3>
+<p><strong>问题</strong>：每次 SSH 输密码很麻烦，而且密码在网络传输（虽然是加密的）不如密钥安全。</p>
+<p><strong>原理——非对称加密</strong>：</p>
+<div class="codehilite"><pre><span></span><code>你生成一对密钥：
+  ├── 私钥 (ax3000t_rsa)    ← 永远留你电脑上，谁也不能给
+  └── 公钥 (ax3000t_rsa.pub) ← 放到路由器上，公开没关系
+
+连接时：
+  路由器用公钥加密一个随机挑战 → 你的电脑用私钥解密 → 证明你有私钥 → 允许登录
+
+  窃听者就算截获了挑战和响应，也算不出你的私钥（数学上不可行）
+</code></pre></div>
+
+<p><strong>操作步骤</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 生成 ed25519 密钥对（你电脑上）</span>
+ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;C:/Users/HONOR/Desktop/AX3000T刷机校园网/.ssh/ax3000t_rsa&quot;</span>
+
+<span class="c1"># 2. 把公钥放到路由器上</span>
+<span class="c1">#    公钥内容是一行文本，类似：</span>
+<span class="c1">#    ssh-ed25519 AAAAC3NzaC1l... HONOR@LAPTOP-TAYLOR</span>
+<span class="c1">#    把它追加到路由器的 /etc/dropbear/authorized_keys 文件中</span>
+
+<span class="c1"># 3. 之后免密连接</span>
+ssh<span class="w"> </span>-i<span class="w"> </span>.ssh/ax3000t_rsa<span class="w"> </span>root@192.168.1.1
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>为什么用 ed25519 而不是 RSA？</strong> ed25519 是更新的算法，密钥更短（约 68 字符 vs 400+），安全性更高，性能更好。现代系统都支持。<br />
+- <strong>为什么是 <code>/etc/dropbear/</code> 而不是 <code>~/.ssh/</code>？</strong> 因为路由器用的是 dropbear SSH 服务器，不是标准 OpenSSH。dropbear 的 authorized_keys 路径不同。<br />
+- <strong>SSH config 文件</strong>：创建 <code>~/.ssh/config</code> 后，只需要打 <code>ssh ax3000t</code> 就能连接，不用每次输 IP 和密钥路径。</p>
+</blockquote>
+<h4 id="windows">途中遇到的 Windows 问题</h4>
+<p>在 Windows 上，SSH 不能直接从 stdin 读密码（因为 Windows 没有 <code>/dev/tty</code> 设备）。<code>sshpass</code> 工具也因此失效。</p>
+<p><strong>解决方案</strong>：<code>SSH_ASKPASS</code> 机制——写一个简单的脚本输出密码，通过环境变量告诉 SSH 用它来获取密码。这是 SSH 标准支持的密码自动化方式。</p>
+<h3 id="23-wifi">2.3 WiFi 加密配置</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># UCI 命令修改无线配置</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.ssid<span class="o">=</span><span class="s1">&#39;可以和我在一起吗&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.encryption<span class="o">=</span><span class="s1">&#39;psk2&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.key<span class="o">=</span><span class="s1">&#39;好呀我也喜欢你!&#39;</span>
+<span class="c1"># ... 同样的命令对 radio1 执行 ...</span>
+uci<span class="w"> </span>commit<span class="w"> </span>wireless<span class="w">    </span><span class="c1"># 保存到配置文件</span>
+wifi<span class="w"> </span>reload<span class="w">            </span><span class="c1"># 让 hostapd 重新加载</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>psk2 = WPA2-PSK</strong>。PSK = Pre-Shared Key（预共享密钥），也就是你输的那个密码。WPA2 是目前最广泛使用的 WiFi 加密标准。<br />
+- <code>uci set</code> 修改内存中的配置，<code>uci commit</code> 写入磁盘，然后通过服务的 <code>reload</code> 让配置生效。<br />
+- WiFi SSID 在 <code>iw dev</code> 输出中显示为 <code>\xe5\x8f\xaf...</code> 是因为中文字符被转义成了十六进制（UTF-8 编码），实际显示是正常的。</p>
+</blockquote>
+<hr />
+<p><a name="phase3"></a></p>
+<h2 id="phase-3wifi-wan">Phase 3：WiFi WAN 配置——让路由器无线连校园网</h2>
+<h3 id="_5">目标</h3>
+<p>把路由器的 5G radio 从"发射热点"改成"连接 henu-student"，作为上网出口（WAN）。</p>
+<h3 id="31">3.1 理解当前状态</h3>
+<p>配置前：</p>
+<div class="codehilite"><pre><span></span><code>radio0 (2.4G): AP 模式 → SSID &quot;可以和我在一起吗&quot; → br-lan → 宿舍设备连
+radio1 (5G):   AP 模式 → SSID &quot;可以和我在一起吗&quot; → br-lan → 宿舍设备连
+WAN:           有线 lan1 → DHCP 获取 IP（插网线用）
+</code></pre></div>
+
+<p>我们的目标改造后：</p>
+<div class="codehilite"><pre><span></span><code>radio0 (2.4G): AP 模式 → SSID &quot;可以和我在一起吗&quot; → br-lan → 宿舍设备连
+radio1 (5G):   STA 模式 → 连接 henu-student → wwan → WAN → 外网
+WAN:           无线 wwan（替代有线）
+</code></pre></div>
+
+<h3 id="32-wifi-henu-student">3.2 WiFi 扫描——找到 henu-student</h3>
+<div class="codehilite"><pre><span></span><code>iw<span class="w"> </span>dev<span class="w"> </span>phy0-ap0<span class="w"> </span>scan<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;SSID|signal|freq&quot;</span>
+</code></pre></div>
+
+<p>关键输出：</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">2.4</span><span class="n">G</span><span class="p">:</span><span class="w"> </span><span class="n">henu</span><span class="o">-</span><span class="n">student</span><span class="w">  </span><span class="n">signal</span><span class="p">:</span><span class="w"> </span><span class="o">-</span><span class="mf">56</span><span class="w"> </span><span class="n">dBm</span><span class="w">  </span><span class="p">(</span><span class="n">信号好</span><span class="p">)</span>
+<span class="mf">5</span><span class="n">G</span><span class="p">:</span><span class="w">   </span><span class="n">henu</span><span class="o">-</span><span class="n">student</span><span class="w">  </span><span class="n">signal</span><span class="p">:</span><span class="w"> </span><span class="o">-</span><span class="mf">78</span><span class="w"> </span><span class="n">dBm</span><span class="w">  </span><span class="p">(</span><span class="n">信号弱但够用</span><span class="p">)</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>dBm 是什么？</strong> 信号强度的单位，是负值。越接近 0 信号越好。-30 是极强，-50 是很好，-70 是及格，-80 以上不稳定。<br />
+- <strong>为什么选 5G 而不是 2.4G 连校园网？</strong> 虽然 2.4G 信号更好，但 2.4G 穿墙能力强，留给宿舍设备更合适。5G 的 -78dBm 对于上网足够，且 5G 干扰少、速度快。<br />
+- <strong><code>iw</code> 命令</strong>：Linux 无线管理的底层工具（基于 nl80211 接口）。</p>
+</blockquote>
+<p><strong>⚠️ 事故</strong>：扫描后 SSH 短暂断开。MediaTek mt76 驱动在扫描时不太稳定。之后避免使用 <code>iw scan</code>。</p>
+<h3 id="33">3.3 修改无线配置</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 备份（好习惯！）</span>
+cp<span class="w"> </span>/etc/config/wireless<span class="w"> </span>/etc/config/wireless.bak
+
+<span class="c1"># radio1 改为 STA 客户端模式</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.mode<span class="o">=</span><span class="s1">&#39;sta&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.ssid<span class="o">=</span><span class="s1">&#39;henu-student&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.encryption<span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="w">   </span><span class="c1"># 校园网无加密</span>
+uci<span class="w"> </span>delete<span class="w"> </span>wireless.default_radio1.key<span class="w">               </span><span class="c1"># 删除WiFi密码</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.network<span class="o">=</span><span class="s1">&#39;wwan&#39;</span><span class="w">        </span><span class="c1"># 绑定到 wwan 网络</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.radio1.channel<span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="w">               </span><span class="c1"># STA模式自动选信道</span>
+uci<span class="w"> </span>commit<span class="w"> </span>wireless
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：关键的几行：<br />
+- <code>mode='sta'</code>：把无线接口从 AP（发射）改成 STA（接收/客户端）。<br />
+- <code>encryption='none'</code>：henu-student 没有 WiFi 密码（开放的），它用 Portal Web 认证而不是 WiFi 加密。<br />
+- <code>network='wwan'</code>：这是 UCI 的引用——让这个 WiFi 接口属于 <code>wwan</code> 这个逻辑网络。<code>wwan</code> 我们接下来创建。</p>
+</blockquote>
+<h3 id="34-wwan">3.4 创建 wwan 网络接口</h3>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.wwan<span class="o">=</span><span class="s1">&#39;interface&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.wwan.proto<span class="o">=</span><span class="s1">&#39;dhcp&#39;</span>
+uci<span class="w"> </span>commit<span class="w"> </span>network
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<code>wwan</code> = Wireless WAN（无线广域网）。DHCP 协议让路由器从校园网的 DHCP 服务器自动获取 IP 地址、网关、DNS。</p>
+</blockquote>
+<h3 id="35">3.5 防火墙配置</h3>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span>add_list<span class="w"> </span>firewall.@zone<span class="o">[</span><span class="m">1</span><span class="o">]</span>.network<span class="o">=</span><span class="s1">&#39;wwan&#39;</span>
+uci<span class="w"> </span>commit<span class="w"> </span>firewall
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <code>firewall.@zone[1]</code> 指防火墙配置中的第二个 zone（index 从 0 开始）。zone[0] 是 LAN，zone[1] 是 WAN。<br />
+- <code>add_list</code> 向 WAN zone 的 network 列表添加 <code>wwan</code>，这样 wwan 接口的流量会被 NAT 和 WAN 防火墙规则覆盖。</p>
+</blockquote>
+<h3 id="36">3.6 应用并验证</h3>
+<div class="codehilite"><pre><span></span><code>wifi<span class="w"> </span>reload<span class="w">     </span><span class="c1"># 让无线配置生效</span>
+</code></pre></div>
+
+<p><code>wifi reload</code> 做了什么？<br />
+1. 停止所有无线接口<br />
+2. 重读 <code>/etc/config/wireless</code><br />
+3. 启动 radio1 的 STA 接口（去连 henu-student）<br />
+4. 启动 radio0 的 AP 接口（保持宿舍热点）</p>
+<p>验证结果：</p>
+<div class="codehilite"><pre><span></span><code><span class="n">iw</span><span class="w"> </span><span class="n">dev</span><span class="w"> </span><span class="n">phy1</span><span class="o">-</span><span class="n">sta0</span><span class="w"> </span><span class="n">link</span>
+
+<span class="n">Connected</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="mi">06</span><span class="p">:</span><span class="mi">74</span><span class="p">:</span><span class="mi">9</span><span class="n">c</span><span class="p">:</span><span class="mi">6</span><span class="n">a</span><span class="p">:</span><span class="mi">71</span><span class="p">:</span><span class="mi">9</span><span class="n">d</span><span class="w"> </span><span class="p">(</span><span class="n">on</span><span class="w"> </span><span class="n">phy1</span><span class="o">-</span><span class="n">sta0</span><span class="p">)</span>
+<span class="w">    </span><span class="n">SSID</span><span class="p">:</span><span class="w"> </span><span class="n">henu</span><span class="o">-</span><span class="n">student</span>
+<span class="w">    </span><span class="k">signal</span><span class="p">:</span><span class="w"> </span><span class="o">-</span><span class="mi">49</span><span class="w"> </span><span class="n">dBm</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="err">实际连接后信号比扫描时更好！</span>
+<span class="w">    </span><span class="n">rx</span><span class="w"> </span><span class="n">bitrate</span><span class="p">:</span><span class="w"> </span><span class="mi">400</span><span class="w"> </span><span class="n">MBit</span><span class="o">/</span><span class="n">s</span><span class="w">        </span><span class="err">←</span><span class="w"> </span><span class="err">接收速率</span><span class="w"> </span><span class="mi">400</span><span class="n">Mbps</span>
+</code></pre></div>
+
+<p>然后获取 IP：</p>
+<div class="codehilite"><pre><span></span><code>ifup<span class="w"> </span>wwan
+ip<span class="w"> </span>addr<span class="w"> </span>show<span class="w"> </span>dev<span class="w"> </span>phy1-sta0
+<span class="c1"># 输出：inet 10.36.82.65/15</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<code>10.36.82.65/15</code> 中 <code>/15</code> 是子网掩码的 CIDR 表示法，等同于 <code>255.254.0.0</code>，意味着这个子网有约 13 万个可用 IP。</p>
+</blockquote>
+<p>网络连通性测试：</p>
+<div class="codehilite"><pre><span></span><code>ping 172.29.35.27  ✅ (认证服务器可达——在校园网内)
+ping 8.8.8.8       ❌ (外网不可达——还没 Portal 认证)
+</code></pre></div>
+
+<p>这正是预期行为！校园网允许你访问内网（包括认证服务器），但外网需要在 Portal 页面认证后才能访问。</p>
+<hr />
+<p><a name="phase4"></a></p>
+<h2 id="phase-4">Phase 4：校园网认证脚本</h2>
+<h3 id="_6">目标</h3>
+<p>让路由器自动完成 Portal 认证的三步流程。</p>
+<h3 id="41-henu">4.1 理解 HENU 校园网的认证机制</h3>
+<p>校园网使用了 <strong>Portal 认证</strong>（也叫 Captive Portal）。这是一种"先连 WiFi，再通过网页认证"的机制：</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">1.</span><span class="w"> </span><span class="n">你的设备连上</span><span class="w"> </span><span class="n">henu</span><span class="o">-</span><span class="n">student</span><span class="err">（</span><span class="n">开放WiFi</span><span class="err">，</span><span class="n">无密码</span><span class="err">）</span>
+<span class="mf">2.</span><span class="w"> </span><span class="n">DHCP</span><span class="w"> </span><span class="n">分配校园网内网</span><span class="w"> </span><span class="n">IP</span><span class="err">（</span><span class="n">如</span><span class="w"> </span><span class="mf">10.36.82.65</span><span class="err">）</span>
+<span class="mf">3.</span><span class="w"> </span><span class="n">此时可以访问校园内网</span><span class="err">（</span><span class="n">认证服务器</span><span class="err">、</span><span class="n">学校网站</span><span class="err">）</span>
+<span class="mf">4.</span><span class="w"> </span><span class="n">但不能上外网</span><span class="err">（</span><span class="n">百度</span><span class="err">、</span><span class="n">谷歌</span><span class="err">、</span><span class="mf">8.8.8.8</span><span class="err">）</span>
+<span class="mf">5.</span><span class="w"> </span><span class="n">打开浏览器</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">被强制重定向到</span><span class="w"> </span><span class="n">Portal</span><span class="w"> </span><span class="n">页面</span><span class="w"> </span><span class="p">(</span><span class="mf">172.29.35.36</span><span class="p">:</span><span class="mf">6060</span><span class="p">)</span>
+<span class="mf">6.</span><span class="w"> </span><span class="n">在页面上输学号密码</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">认证通过</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">外网通了</span>
+</code></pre></div>
+
+<p>我们的脚本就是<strong>模拟第5-6步</strong>，用 HTTP 请求代替人工在网页上填写。</p>
+<h3 id="42-http">4.2 三步认证的 HTTP 细节</h3>
+<p>参考仓库：https://github.com/jry21223/HENU_autologin</p>
+<div class="codehilite"><pre><span></span><code>第一步：验证账号
+<span class="w">  </span><span class="nv">POST</span><span class="w"> </span><span class="nv">http</span>:<span class="o">//</span><span class="mi">172</span>.<span class="mi">29</span>.<span class="mi">35</span>.<span class="mi">27</span>:<span class="mi">8088</span><span class="o">/</span><span class="nv">aaa</span><span class="o">-</span><span class="nv">auth</span><span class="o">/</span><span class="nv">api</span><span class="o">/</span><span class="nv">v1</span><span class="o">/</span><span class="nv">auth</span>
+<span class="w">  </span>数据:<span class="w"> </span><span class="nv">campusCode</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">username</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">password</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">operatorSuffix</span>
+<span class="w">  </span>期望:<span class="w"> </span>{<span class="s2">&quot;code&quot;</span>:<span class="mi">1</span>}
+
+第二步：二次校验
+<span class="w">  </span><span class="nv">POST</span><span class="w"> </span><span class="nv">http</span>:<span class="o">//</span><span class="mi">172</span>.<span class="mi">29</span>.<span class="mi">35</span>.<span class="mi">27</span>:<span class="mi">8882</span><span class="o">/</span><span class="nv">user</span><span class="o">/</span><span class="nv">check</span><span class="o">-</span><span class="nv">only</span>
+<span class="w">  </span>数据:<span class="w"> </span><span class="nv">username</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">password</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">operatorSuffix</span>
+<span class="w">  </span>期望:<span class="w"> </span>{<span class="s2">&quot;code&quot;</span>:<span class="mi">1</span>}
+
+第三步：门户最终认证
+<span class="w">  </span><span class="nv">GET</span><span class="w"> </span><span class="nv">http</span>:<span class="o">//</span><span class="mi">172</span>.<span class="mi">29</span>.<span class="mi">35</span>.<span class="mi">36</span>:<span class="mi">6060</span><span class="o">/</span><span class="nv">quickauth</span>.<span class="k">do</span>
+<span class="w">  </span>参数:<span class="w"> </span><span class="nv">userid</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">passwd</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">wlanuserip</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">wlanacname</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">wlanacIp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">timestamp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">uuid</span>
+<span class="w">  </span>期望:<span class="w"> </span>{<span class="s2">&quot;message&quot;</span>:<span class="s2">&quot;认证成功&quot;</span>}
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>POST vs GET</strong>：POST 把数据放在请求体里（<code>--data-raw</code> 或 <code>--post-data</code>），适合提交表单。GET 把参数放在 URL 的 <code>?</code> 后面，适合查询。<br />
+- <strong>172.29.x.x</strong>：这是校园网内网 IP 段。只有连上 henu-student 才能访问这些服务器。<br />
+- <strong>Referer</strong>：HTTP 头，告诉服务器"我是从哪个页面来的"。认证服务器校验这个头，需要假装来自 Portal 页面。<br />
+- <strong>Cookie</strong>：第三步用了一个固定的 Cookie（<code>ABMS=362ee66b...</code>），可能是绕过某些校验。</p>
+</blockquote>
+<h3 id="43-curl-wget">4.3 curl 还是 wget——嵌入式环境的取舍</h3>
+<p><strong>第一个坑</strong>：路由器没有预装 <code>curl</code>。</p>
+<p>OpenWrt 的 <code>busybox</code> 自带了一个精简版 <code>wget</code>。它功能少但覆盖面窄。我们尝试 <code>opkg install curl</code>，但因为还没认证上不了外网，下载失败（鸡生蛋蛋生鸡）。</p>
+<p><strong>解决方案</strong>：用 busybox <code>wget</code> 重写脚本。</p>
+<p>两者的语法对比：</p>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>curl</th>
+<th>busybox wget</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET 请求</td>
+<td><code>curl -s URL</code></td>
+<td><code>wget -q -O - URL</code></td>
+</tr>
+<tr>
+<td>POST 请求</td>
+<td><code>curl -X POST --data-raw "data"</code></td>
+<td><code>wget --post-data="data"</code></td>
+</tr>
+<tr>
+<td>自定义头</td>
+<td><code>-H "Header: value"</code></td>
+<td><code>--header="Header: value"</code></td>
+</tr>
+<tr>
+<td>Cookie</td>
+<td><code>-b "cookie"</code></td>
+<td><code>--header="Cookie: cookie"</code></td>
+</tr>
+<tr>
+<td>超时</td>
+<td><code>--connect-timeout 10</code></td>
+<td><code>-T 10</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="44">4.4 脚本核心结构解析</h3>
+<div class="codehilite"><pre><span></span><code><span class="ch">#!/bin/sh</span>
+<span class="c1"># ↑ shebang——告诉系统用哪个解释器执行这个脚本</span>
+
+<span class="c1"># 配置变量（改这里就能适配不同账号）</span>
+<span class="nv">USERNAME</span><span class="o">=</span><span class="s2">&quot;2510250328&quot;</span>
+<span class="nv">PASSWORD</span><span class="o">=</span><span class="s2">&quot;386095&quot;</span>
+<span class="nv">OPERATOR_SUFFIX</span><span class="o">=</span><span class="s2">&quot;@henuyd&quot;</span><span class="w">    </span><span class="c1"># 运营商后缀（henuyd=移动）</span>
+<span class="nv">CAMPUS_CODE</span><span class="o">=</span><span class="s2">&quot;07cdfd23373b17c6b337251c22b7ea57&quot;</span>
+
+<span class="c1"># 日志函数——所有输出带时间戳写入日志文件</span>
+log<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;[</span><span class="k">$(</span>date<span class="w"> </span><span class="s1">&#39;+%Y-%m-%d %H:%M:%S&#39;</span><span class="k">)</span><span class="s2">] </span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="nv">$LOG_FILE</span>
+<span class="o">}</span>
+
+<span class="c1"># 网络检测——ping 通 8.8.8.8 说明已认证</span>
+check_network<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>ping<span class="w"> </span>-c<span class="w"> </span><span class="m">2</span><span class="w"> </span>-W<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">8</span>.8.8.8<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <code>#!/bin/sh</code> 不是注释！它是 Unix 的 shebang 机制，告诉内核"用 /bin/sh 来执行这个文件"。<br />
+- <code>$(date '+%Y-%m-%d %H:%M:%S')</code> 是命令替换——先执行 <code>date</code> 命令，把输出嵌入字符串。<br />
+- <code>&gt; /dev/null 2&gt;&amp;1</code> 是把标准输出和错误输出都丢弃（只关心 ping 的退出码）。<br />
+- <code>ping -c 2 -W 3</code>：<code>-c 2</code> 发 2 个包，<code>-W 3</code> 超时 3 秒。</p>
+</blockquote>
+<h3 id="45">4.5 测试结果</h3>
+<div class="codehilite"><pre><span></span><code><span class="nl">第一步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="mi">1</span><span class="p">,</span><span class="ss">&quot;msg&quot;</span><span class="err">:</span><span class="ss">&quot;发起登录&quot;</span><span class="p">,</span><span class="ss">&quot;data&quot;</span><span class="err">:</span><span class="ss">&quot;2510250328@henuyd&quot;</span><span class="err">}</span>
+<span class="nl">第二步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="mi">1</span><span class="p">,</span><span class="ss">&quot;msg&quot;</span><span class="err">:</span><span class="ss">&quot;SUCCESS&quot;</span><span class="p">,</span><span class="ss">&quot;data&quot;</span><span class="err">:</span><span class="k">null</span><span class="err">}</span>
+<span class="nl">第三步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="ss">&quot;0&quot;</span><span class="p">,</span><span class="ss">&quot;rec&quot;</span><span class="err">:</span><span class="k">null</span><span class="p">,</span><span class="ss">&quot;message&quot;</span><span class="err">:</span><span class="ss">&quot;认证成功&quot;</span><span class="p">...</span><span class="err">}</span>
+
+<span class="n">ping</span><span class="w"> </span><span class="mf">8.8.8.8</span><span class="err">:</span><span class="w"> </span><span class="mi">56</span><span class="n">ms</span><span class="w"> </span><span class="err">✅</span><span class="w">  </span><span class="n">外网通了</span><span class="err">！</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：注意到第三步的 <code>"code":"0"</code> 不是错误——不同的 API 端点有不同的返回格式。关键看 <code>"message":"认证成功"</code>。</p>
+</blockquote>
+<hr />
+<p><a name="phase5"></a></p>
+<h2 id="phase-5-nat">Phase 5：定时重连 &amp; NAT 修复</h2>
+<h3 id="51-cron">5.1 Cron 定时任务</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;*/5 * * * * /etc/campus_network/auto_login.sh&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/crontabs/root
+/etc/init.d/cron<span class="w"> </span>restart
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>Cron</strong> 是 Unix/Linux 的定时任务调度器。它每分钟醒来一次，检查有没有到时间的任务。<br />
+- <strong>crontab 格式</strong>：<code>分 时 日 月 星期 命令</code>。<code>*/5 * * * *</code> 表示"每 5 分钟执行一次"（在所有小时、所有日期、所有月份、所有星期）。<br />
+- OpenWrt 的 crontab 文件在 <code>/etc/crontabs/root</code>（root 用户的 cron 表）。<br />
+- 脚本第一步就是 <code>check_network</code>，如果 ping 8.8.8.8 通了就直接退出（防止频繁认证），不通才走完整认证流程。这样设计很优雅。</p>
+</blockquote>
+<h3 id="52-nat-firewall4-fullcone">5.2 NAT 修复——firewall4 的 fullcone 问题</h3>
+<p><strong>症状</strong>：路由器自己能上网，但连在 WiFi 上的手机显示"无互联网"。</p>
+<p><strong>诊断过程</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">1.</span><span class="w"> </span><span class="n">检查</span><span class="w"> </span><span class="n">NAT</span><span class="w"> </span><span class="n">规则</span><span class="err">：</span><span class="n">nft</span><span class="w"> </span><span class="kr">list</span><span class="w"> </span><span class="n">chain</span><span class="w"> </span><span class="n">inet</span><span class="w"> </span><span class="n">fw4</span><span class="w"> </span><span class="n">srcnat_wan</span>
+<span class="w">   </span><span class="err">→</span><span class="w"> </span><span class="n">发现规则是</span><span class="w"> </span><span class="n">fullcone</span><span class="err">，</span><span class="n">没有传统</span><span class="w"> </span><span class="n">masquerade</span>
+
+<span class="mf">2.</span><span class="w"> </span><span class="n">抓</span><span class="w"> </span><span class="n">conntrack</span><span class="err">：</span><span class="n">cat</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">net</span><span class="o">/</span><span class="n">nf_conntrack</span>
+<span class="w">   </span><span class="err">→</span><span class="w"> </span><span class="n">发现从</span><span class="w"> </span><span class="n">br</span><span class="o">-</span><span class="n">lan</span><span class="w"> </span><span class="p">(</span><span class="mf">192.168.1.1</span><span class="p">)</span><span class="w"> </span><span class="n">出去的包没有被</span><span class="w"> </span><span class="n">NAT</span>
+
+<span class="mf">3.</span><span class="w"> </span><span class="n">关闭</span><span class="w"> </span><span class="n">fullcone</span><span class="err">，</span><span class="n">改用标准</span><span class="w"> </span><span class="n">masquerade</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>什么是 fullcone NAT？</strong> Fullcone（完全锥形）NAT 会为每个内网 IP:端口创建一个固定的外网映射。但我们的场景中，fullcone 似乎没有正确处理从 LAN 到 WAN 的新流量。</p>
+</blockquote>
+<p><strong>修复</strong>：</p>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>firewall.@defaults<span class="o">[</span><span class="m">0</span><span class="o">]</span>.fullcone<span class="o">=</span><span class="s1">&#39;0&#39;</span>
+fw4<span class="w"> </span>restart
+</code></pre></div>
+
+<p><code>fw4 restart</code> 会重新生成 nftables 规则。现在 srcnat_wan 链变成了：</p>
+<div class="codehilite"><pre><span></span><code>meta nfproto ipv4 masquerade
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<code>masquerade</code> 是 SNAT 的一种特殊形式——自动使用出口接口的 IP 作为源地址。比手动指定 SNAT IP 更灵活，适合 DHCP 获取 IP 的场景。</p>
+</blockquote>
+<p><strong>验证</strong>：PC（通过以太网连路由器）可以 ping 8.8.8.8，说明 NAT 生效了。手机显示"无互联网"只是图标问题，实际能上网。</p>
+<blockquote>
+<p><strong>关于手机"无互联网"图标</strong>：Android/iOS 通过访问特定的 URL（如 <code>http://connectivitycheck.gstatic.com/generate_204</code>）来判断 WiFi 是否有互联网连接。如果这个请求被中间设备劫持或超时，手机会错误显示"无互联网"。<strong>以浏览器实测为准！</strong></p>
+</blockquote>
+<h3 id="53">5.3 最终系统状态</h3>
+<div class="codehilite"><pre><span></span><code>┌──────────────────────────────────────────────────┐
+│                 AX3000T 路由器                     │
+│                                                    │
+│  WAN 侧：                                          │
+│    phy1-sta0 (5G STA)                             │
+│    → SSID: henu-student                           │
+│    → IP: 10.36.82.65/15                           │
+│    → 网关: 10.36.0.1                              │
+│    → 认证: ✅ 三步 Portal 通过                      │
+│    → cron: 每5分钟自动检测                          │
+│                                                    │
+│  LAN 侧：                                          │
+│    br-lan (桥接：lan2, lan3, lan4, phy0-ap0)       │
+│    → IP: 192.168.1.1/24                           │
+│    → DHCP: 192.168.1.100 - 192.168.1.249           │
+│    → DNS: dnsmasq (上游 114.114.114.114)           │
+│                                                    │
+│  WiFi 宿舍热点 (phy0-ap0):                          │
+│    → SSID: 可以和我在一起吗                         │
+│    → 加密: WPA2-PSK                                │
+│    → 密码: 好呀我也喜欢你!                           │
+│                                                    │
+│  NAT: nftables masquerade (fw4)                    │
+│  状态: 🟢 正常运行                                  │
+└──────────────────────────────────────────────────┘
+</code></pre></div>
+
+<hr />
+<p><a name="pitfalls"></a></p>
+<h2 id="_7">踩坑记录 &amp; 故障排查技巧</h2>
+<h3 id="1busybox-echo-e">坑 1：busybox echo 的 -e 陷阱</h3>
+<p><strong>现象</strong>：用 <code>echo -e 'xxx\nxxx' | passwd</code> 设密码，设完登录不了。</p>
+<p><strong>根因</strong>：busybox 的 <code>echo</code> 不支持 <code>-e</code> 选项。<code>\n</code> 被当字面字符处理。</p>
+<p><strong>解决</strong>：永远用 <code>printf</code> 代替 <code>echo -e</code>。</p>
+<p><strong>通用技巧</strong>：在嵌入式环境，不确定命令行为时，加一个小测试：</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;test\n&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>od<span class="w"> </span>-c<span class="w">    </span><span class="c1"># 看实际输出了什么</span>
+</code></pre></div>
+
+<h3 id="2windows-devtty">坑 2：Windows /dev/tty 缺失</h3>
+<p><strong>现象</strong>：<code>sshpass</code> 在 Windows 上无法工作。</p>
+<p><strong>根因</strong>：<code>sshpass</code> 通过 <code>/dev/tty</code> 注入密码，Windows 没有这个设备。</p>
+<p><strong>解决</strong>：用 <code>SSH_ASKPASS</code> + <code>SSH_ASKPASS_REQUIRE=force</code> 环境变量方式。</p>
+<p><strong>通用技巧</strong>：Windows 做 SSH 自动化，最佳实践是用 SSH 密钥（无密码）而非密码认证。</p>
+<h3 id="3mt76-wifi">坑 3：mt76 WiFi 驱动不稳定</h3>
+<p><strong>现象</strong>：<code>iw scan</code> 后 SSH 连接断开。</p>
+<p><strong>根因</strong>：MediaTek mt76 驱动在扫描时会短暂重置无线芯片，如果 SSH 流量恰好在那一刻经过可能与无线相关的路径，会超时。</p>
+<p><strong>解决</strong>：减少不必要的扫描操作，扫描后等待稳定。</p>
+<h3 id="4opkg">坑 4：opkg 装不了包（认证前无外网）</h3>
+<p><strong>现象</strong>：<code>opkg install curl</code> 失败，因为路由器还没认证不能上外网。</p>
+<p><strong>根因</strong>：校园网的 Portal 认证机制——认证前只能访问内网。opkg 源在外网。</p>
+<p><strong>解决</strong>：用已有的工具（busybox wget）代替需下载的工具（curl）。</p>
+<p><strong>通用技巧</strong>：先检查有什么 → 再改造 → 最后才尝试安装新东西。</p>
+<h3 id="5firewall4-fullcone-nat">坑 5：firewall4 fullcone NAT 不生效</h3>
+<p><strong>现象</strong>：路由器能上网，LAN 客户端不能。</p>
+<p><strong>根因</strong>：ImmortalWrt 默认开启的 fullcone NAT 在某些网络环境下不能正确处理来自私有子网的流量。标准 masquerade 更可靠。</p>
+<p><strong>诊断方法</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 检查 NAT 规则</span>
+nft<span class="w"> </span>list<span class="w"> </span>chain<span class="w"> </span>inet<span class="w"> </span>fw4<span class="w"> </span>srcnat_wan
+
+<span class="c1"># 2. 查看连接跟踪（看包是否被 NAT）</span>
+cat<span class="w"> </span>/proc/net/nf_conntrack<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="m">8</span>.8.8.8
+
+<span class="c1"># 3. 从路由器本机测试（绕过 NAT）</span>
+ping<span class="w"> </span><span class="m">8</span>.8.8.8<span class="w">          </span><span class="c1"># 路由器自己用 phy1-sta0 的 IP 出去</span>
+ping<span class="w"> </span>-I<span class="w"> </span>br-lan<span class="w"> </span><span class="m">8</span>.8.8.8<span class="w">  </span><span class="c1"># 用 LAN IP 出去（需要 NAT）</span>
+</code></pre></div>
+
+<hr />
+<h2 id="_8">项目文件索引</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>位置</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLAUDE.md</code></td>
+<td>项目根目录</td>
+<td>项目入口，状态总览</td>
+</tr>
+<tr>
+<td><code>credentials.txt</code></td>
+<td>项目根目录</td>
+<td>所有密码和账号（敏感，勿上传）</td>
+</tr>
+<tr>
+<td><code>路由器当前状态.md</code></td>
+<td>项目根目录</td>
+<td>初始配置快照</td>
+</tr>
+<tr>
+<td><code>.ssh/ax3000t_rsa</code></td>
+<td>项目/.ssh/</td>
+<td>SSH 私钥</td>
+</tr>
+<tr>
+<td><code>.ssh/config</code></td>
+<td>项目/.ssh/</td>
+<td>SSH 连接快捷配置</td>
+</tr>
+<tr>
+<td>认证脚本</td>
+<td>路由器 <code>/etc/campus_network/auto_login.sh</code></td>
+<td>自动登录脚本</td>
+</tr>
+<tr>
+<td>认证日志</td>
+<td>路由器 <code>/tmp/campus_network.log</code></td>
+<td>认证过程日志</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_9">后续维护指南</h2>
+<h3 id="_10">如果校园网密码改了</h3>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
+vi<span class="w"> </span>/etc/campus_network/auto_login.sh<span class="w">   </span><span class="c1"># 改 PASSWORD 变量</span>
+</code></pre></div>
+
+<h3 id="_11">如果断网了</h3>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
+cat<span class="w"> </span>/tmp/campus_network.log<span class="w">            </span><span class="c1"># 看认证日志</span>
+/etc/campus_network/auto_login.sh<span class="w">      </span><span class="c1"># 手动触发认证</span>
+</code></pre></div>
+
+<h3 id="wifi">如果要改 WiFi 密码</h3>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.key<span class="o">=</span><span class="s1">&#39;新密码&#39;</span>
+uci<span class="w"> </span>commit<span class="w"> </span>wireless
+wifi<span class="w"> </span>reload
+</code></pre></div>
+
+<h3 id="_12">如果要恢复出厂设置</h3>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
+firstboot<span class="w">    </span><span class="c1"># 清空 overlay，重启后恢复初始状态</span>
+</code></pre></div>
+
+<hr />
+<hr />
+<h2 id="1">扩展篇 1：路由器硬件原理深度解析</h2>
+<blockquote>
+<p>这一章讲"路由器到底是什么"。理解了硬件，你就能判断这台设备能做什么、不能做什么。</p>
+</blockquote>
+<h3 id="11">1.1 路由器 = 一台微型电脑</h3>
+<p>你的 AX3000T 拆开外壳后，里面是这些东西：</p>
+<div class="codehilite"><pre><span></span><code>┌─────────────────────────────────────────────────────────────┐
+│                                                               │
+│   ┌─────────────┐   ┌──────────────────────────────────┐    │
+│   │  NAND Flash  │   │  MediaTek MT7981B (Filogic 820) │    │
+│   │  128MB       │   │  ┌────────────────────────────┐ │    │
+│   │  (相当于硬盘) │◄──┤  │  ARM Cortex-A53 ×2核心      │ │    │
+│   │              │   │  │  主频: 1.3GHz                │ │    │
+│   └─────────────┘   │  │  相当于: 手机的CPU性能         │ │    │
+│                     │  └────────────────────────────┘ │    │
+│   ┌─────────────┐   │                                  │    │
+│   │  DDR4 RAM   │   │  ┌────────────────────────────┐ │    │
+│   │  256MB       │◄──┤  │  网络加速引擎 (PPE)          │ │    │
+│   │  (相当于内存)│   │  │  硬件NAT, 不消耗CPU           │ │    │
+│   │              │   │  └────────────────────────────┘ │    │
+│   └─────────────┘   │                                  │    │
+│                     │  ┌────────────────────────────┐ │    │
+│   ┌─────────────┐   │  │  MT7976C 无线芯片            │ │    │
+│   │  4×千兆网口  │◄──┤  │  2.4G + 5G 双频              │ │    │
+│   │  (交换机芯片) │   │  │  2×2 MIMO (两根天线)        │ │    │
+│   │              │   │  └────────────────────────────┘ │    │
+│   └─────────────┘   └──────────────────────────────────┘    │
+│                                                               │
+│   功耗: ~5-12W  (一年电费 ≈ 30-70元)                          │
+│   发热: 被动散热 (无需风扇)                                    │
+└─────────────────────────────────────────────────────────────┘
+</code></pre></div>
+
+<h3 id="12_1">1.2 每个部件详解</h3>
+<h4 id="soc-mt7981b-filogic-820">SoC（片上系统）—— MT7981B "Filogic 820"</h4>
+<p>这是路由器的"大脑"。现代路由器 SoC 包含不止 CPU：</p>
+<div class="codehilite"><pre><span></span><code>MT7981B 内部结构：
+┌──────────────────────────────────────┐
+│  双核 ARM Cortex-A53 @ 1.3GHz        │  ← 通用的CPU核心，跑Linux
+│                                       │
+│  PPE (Packet Processing Engine)      │  ← 硬件加速数据包转发
+│    - 硬件NAT (不消耗CPU就能转发流量)   │     没有这个，路由器跑不满千兆
+│    - QoS 硬件队列                     │
+│                                       │
+│  内置 2.5G 以太网 MAC                 │  ← 有线网络接口
+│                                       │
+│  PCIe 2.0 控制器                      │  ← 连接 WiFi 芯片
+│                                       │
+│  USB 3.0/2.0 控制器 (部分型号)        │  ← 可以接U盘/硬盘
+│                                       │
+│  加密加速引擎 (EIP197)                │  ← 硬件加解密，VPN加速
+└──────────────────────────────────────┘
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>为什么路由器 CPU 不如手机 CPU 快，却能同时处理几十个设备？</strong> 因为有 PPE 硬件加速。普通数据包转发不经过 CPU，而是由专门的硬件引擎处理。CPU 只处理"特殊"流量（如 VPN、QoS、防火墙规则）。<br />
+- <strong>Cortex-A53</strong> 是 ARM 在 2012 年发布的 64 位处理器核心，至今广泛用于中低端手机、IoT 设备、路由器。性能大约相当于骁龙 625 的水平。</p>
+</blockquote>
+<h4 id="ram-256mb-ddr4">内存 (RAM) —— 256MB DDR4</h4>
+<div class="codehilite"><pre><span></span><code>路由器的内存分布 (典型状态):
+┌─────────────────────────┐
+│  Linux 内核:      ~30MB │
+│  各服务进程:       ~20MB │
+│  WiFi 驱动缓存:   ~10MB │
+│  磁盘缓存 (buffer):~40MB │
+│  NAND 文件系统缓存:~30MB│
+│  空闲:           ~126MB │
+└─────────────────────────┘
+总大小: 256MB
+</code></pre></div>
+
+<blockquote>
+<p><strong>为什么只有 256MB 却够用？</strong> 路由器不需要图形界面（那才是最吃内存的）。纯命令行 Linux 在 128MB 内存下就能流畅运行。你的 AX3000T 的 256MB 对于 OpenWrt 来说已经算"豪华"配置。</p>
+</blockquote>
+<h4 id="flash-128mb-spi-nand">存储 (Flash) —— 128MB SPI NAND</h4>
+<div class="codehilite"><pre><span></span><code><span class="mf">128</span><span class="n">MB</span><span class="w"> </span><span class="n">NAND</span><span class="w"> </span><span class="n">Flash</span><span class="w"> </span><span class="n">布局</span><span class="p">:</span>
+<span class="err">┌──────────────────────────────┐</span>
+<span class="err">│</span><span class="w">  </span><span class="n">BL2</span><span class="w">        </span><span class="p">(</span><span class="mf">1</span><span class="n">MB</span><span class="p">)</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="n">芯片启动代码</span><span class="w">      </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Nvram</span><span class="o">/</span><span class="n">Bdata</span><span class="w"> </span><span class="p">(</span><span class="mf">512</span><span class="n">KB</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="n">U</span><span class="o">-</span><span class="n">Boot</span><span class="w"> </span><span class="n">环境变量</span><span class="w"> </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Factory</span><span class="w">    </span><span class="p">(</span><span class="mf">2</span><span class="n">MB</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="n">校准数据</span><span class="w">       </span><span class="err">│</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="n">千万不能擦掉</span><span class="err">！</span>
+<span class="err">│</span><span class="w">  </span><span class="n">FIP</span><span class="w">        </span><span class="p">(</span><span class="mf">2</span><span class="n">MB</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="n">U</span><span class="o">-</span><span class="n">Boot</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">ATF</span><span class="w">       </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">ubi_kernel</span><span class="w"> </span><span class="p">(</span><span class="mf">34</span><span class="n">MB</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="n">Linux内核</span><span class="o">+</span><span class="n">固件</span><span class="w">    </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">ubi</span><span class="w">        </span><span class="p">(</span><span class="mf">78</span><span class="n">MB</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="n">用户数据</span><span class="p">(</span><span class="n">我们用的</span><span class="p">)</span><span class="w"> </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">crash等</span><span class="w">    </span><span class="p">(</span><span class="mf">2.5</span><span class="n">MB</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="n">调试分区</span><span class="w">          </span><span class="err">│</span>
+<span class="err">└──────────────────────────────┘</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>关键理解</strong>：Factory 分区存储了每台路由器唯一的 WiFi 校准参数（发射功率、频率偏移等）。刷机时绝对不能擦除这个分区，否则 WiFi 信号质量会严重下降，且无法恢复。</p>
+</blockquote>
+<h4 id="mt7976c">无线芯片 —— MT7976C</h4>
+<div class="codehilite"><pre><span></span><code><span class="mf">2.4</span><span class="n">G</span><span class="w"> </span><span class="n">频段</span><span class="w"> </span><span class="p">(</span><span class="n">radio0</span><span class="p">):</span><span class="w">                  </span><span class="mf">5</span><span class="n">G</span><span class="w"> </span><span class="n">频段</span><span class="w"> </span><span class="p">(</span><span class="n">radio1</span><span class="p">):</span>
+<span class="w">  </span><span class="n">频率</span><span class="p">:</span><span class="w"> </span><span class="mf">2.412</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">2.472</span><span class="w"> </span><span class="n">GHz</span><span class="w">              </span><span class="n">频率</span><span class="p">:</span><span class="w"> </span><span class="mf">5.180</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">5.825</span><span class="w"> </span><span class="n">GHz</span>
+<span class="w">  </span><span class="n">信道</span><span class="p">:</span><span class="w"> </span><span class="mf">1</span><span class="o">-</span><span class="mf">13</span><span class="w"> </span><span class="p">(</span><span class="n">我们用的信道1</span><span class="p">)</span><span class="w">            </span><span class="n">信道</span><span class="p">:</span><span class="w"> </span><span class="mf">36</span><span class="o">-</span><span class="mf">165</span><span class="w"> </span><span class="p">(</span><span class="n">我们连在</span><span class="w"> </span><span class="mf">52</span><span class="p">)</span>
+<span class="w">  </span><span class="n">天线</span><span class="p">:</span><span class="w"> </span><span class="mf">2</span><span class="n">根</span><span class="w"> </span><span class="p">(</span><span class="mf">2</span><span class="err">×</span><span class="mf">2</span><span class="w"> </span><span class="n">MIMO</span><span class="p">)</span><span class="w">                 </span><span class="n">天线</span><span class="p">:</span><span class="w"> </span><span class="mf">2</span><span class="n">根</span><span class="w"> </span><span class="p">(</span><span class="mf">2</span><span class="err">×</span><span class="mf">2</span><span class="w"> </span><span class="n">MIMO</span><span class="p">)</span>
+<span class="w">  </span><span class="n">最大速率</span><span class="p">:</span><span class="w"> </span><span class="mf">574</span><span class="w"> </span><span class="n">Mbps</span><span class="w"> </span><span class="p">(</span><span class="n">WiFi</span><span class="w"> </span><span class="mf">6</span><span class="p">)</span><span class="w">          </span><span class="n">最大速率</span><span class="p">:</span><span class="w"> </span><span class="mf">2402</span><span class="w"> </span><span class="n">Mbps</span><span class="w"> </span><span class="p">(</span><span class="n">WiFi</span><span class="w"> </span><span class="mf">6</span><span class="p">)</span>
+<span class="w">  </span><span class="n">穿墙能力</span><span class="p">:</span><span class="w"> </span><span class="err">★★★★☆</span><span class="w">                     </span><span class="n">穿墙能力</span><span class="p">:</span><span class="w"> </span><span class="err">★★★☆☆</span>
+<span class="w">  </span><span class="n">干扰情况</span><span class="p">:</span><span class="w"> </span><span class="n">较多</span><span class="w"> </span><span class="p">(</span><span class="n">蓝牙</span><span class="err">、</span><span class="n">微波炉</span><span class="mf">...</span><span class="p">)</span><span class="w">      </span><span class="n">干扰情况</span><span class="p">:</span><span class="w"> </span><span class="n">较少</span>
+</code></pre></div>
+
+<h3 id="13_1">1.3 数据包在路由器内部的旅程</h3>
+<p>当一个手机通过 WiFi 访问 <code>baidu.com</code> 时，数据包在路由器内部的完整路径：</p>
+<div class="codehilite"><pre><span></span><code>                         路由器内部
+
+  手机                     │                    外网
+  (192.168.1.249)         │                   (baidu.com)
+      │                    │                      │
+  ① WiFi帧                │                   ⑧ 以太网帧
+      ↓                    │                      ↑
+  phy0-ap0 (2.4G AP)      │              phy1-sta0 (5G STA)
+      ↓                    │                      ↑
+  ② 802.11→以太网转换      │          ⑦ 以太网→802.11 封装
+      ↓                    │                      ↑
+    br-lan (软件桥)         │               nftables NAT
+      ↓                    │             ⑥ 替换源IP: 192.168.1.249
+  ③ 桥转发                 │                → 10.36.82.65 (SNAT)
+      ↓                    │                      ↑
+  nftables INPUT           │              nftables FORWARD
+  ④ 允许 (LAN→WAN)         │          ⑤ 允许 (accept_to_wan)
+      ↓                    │                      ↑
+  ┌───┴─────────────────┴──┐
+  │   Linux 网络栈 (IP路由)  │
+  │  查路由表: 8.8.8.8的下一跳 │
+  │  → via 10.36.0.1 dev    │
+  │    phy1-sta0             │
+  └──────────────────────────┘
+</code></pre></div>
+
+<blockquote>
+<p><strong>每一步都在做什么</strong>：<br />
+1. 手机通过 WiFi 发射 802.11 格式的无线帧<br />
+2. phy0-ap0 接收 WiFi 信号，去除 802.11 头部，变成标准以太网帧<br />
+3. br-lan（软件桥）把帧从 phy0-ap0 转发到 Linux 网络栈<br />
+4. iptables/nftables 的 FORWARD 链检查 LAN→WAN 是否允许<br />
+5. 允许通过<br />
+6. NAT（SNAT）把源 IP 从 <code>192.168.1.249</code> 替换为 <code>10.36.82.65</code><br />
+7. 封装成 802.11 帧（因为出口是 WiFi STA）<br />
+8. 通过 phy1-sta0 发射到空中，去 henu-student AP</p>
+</blockquote>
+<p><strong>这个路径是最慢的"软件路径"。</strong> 如果 WAN 口是有线（普通以太网），PPE 硬件加速可以直接在硬件层面完成 ②-⑦，数据包根本不经 CPU。这就是为什么有线 NAT 能跑满千兆而 WiFi 不能。</p>
+<hr />
+<h2 id="2-10">扩展篇 2：你能用这台路由器做的 10+ 件事</h2>
+<blockquote>
+<p>你现在只是用它"连校园网+开热点"。但这台设备的潜力远超于此。以下按难度排序。</p>
+</blockquote>
+<h3 id="level-1">🌱 Level 1：优化现有功能</h3>
+<h4 id="1-adblock-home-pi-hole">1. 广告拦截 (AdBlock Home / Pi-hole 平替)</h4>
+<p>OpenWrt 可以装 <code>adblock</code> 包，在 DNS 层面拦截广告域名。所有连路由器的设备都不用装广告拦截插件。</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>update
+opkg<span class="w"> </span>install<span class="w"> </span>luci-app-adblock
+<span class="c1"># 然后在 LuCI Web → Services → Adblock 启用</span>
+</code></pre></div>
+
+<p><strong>原理</strong>：DNS 劫持。广告域名的 DNS 请求被返回 <code>0.0.0.0</code>，广告加载失败但不影响正常网页。</p>
+<h4 id="2">2. 流量监控和限速</h4>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>luci-app-nlbwmon<span class="w">    </span><span class="c1"># 实时流量监控</span>
+opkg<span class="w"> </span>install<span class="w"> </span>luci-app-sqm<span class="w">        </span><span class="c1"># Smart Queue Management (防卡顿)</span>
+</code></pre></div>
+
+<p>可以看到每个设备用了多少流量，是谁在下载。SQM 能防止一个人下载时其他人卡顿（Bufferbloat 问题）。</p>
+<h4 id="3">3. 访客网络</h4>
+<p>创建一个隔离的 WiFi，客人可以上网但无法访问你的设备和路由器设置。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 在 /etc/config/wireless 中添加一个新的 wifi-iface</span>
+<span class="c1"># 用单独的 network 和 firewall zone 实现隔离</span>
+</code></pre></div>
+
+<hr />
+<h3 id="level-2">🌿 Level 2：局域网服务</h3>
+<h4 id="4-nas">4. 文件共享 (NAS / 简易网盘)</h4>
+<p>AX3000T 可能没有 USB 口（需要确认），但你可以通过以下方式共享文件：</p>
+<ul>
+<li>
+<p><strong>方案 A</strong>：如果路由器有 USB 口，插 U 盘/移动硬盘<br />
+<code>bash
+  opkg install samba4-server luci-app-samba4   # SMB 共享（Windows 网上邻居）</code></p>
+</li>
+<li>
+<p><strong>方案 B</strong>：即便没有 USB，也可以用 overlay 剩余空间（~55MB）做个临时共享<br />
+<code>bash
+  opkg install luci-app-ksmbd     # 更轻量的 SMB 替代品</code></p>
+</li>
+<li>
+<p><strong>方案 C</strong>：HTTP 文件服务器<br />
+<code>bash
+  opkg install nginx             # 轻量 Web 服务器</code></p>
+</li>
+</ul>
+<h4 id="5">5. 打印机服务器</h4>
+<p>把普通的 USB 打印机变成网络打印机。</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>p910nd<span class="w"> </span>luci-app-p910nd
+<span class="c1"># USB 打印机插路由器 → 全宿舍都能无线打印</span>
+</code></pre></div>
+
+<h4 id="6-dlna">6. DLNA / 媒体服务器</h4>
+<p>把路由器变成简单的媒体中心，电视/手机可以直接播放路由器上的视频。</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>minidlna
+</code></pre></div>
+
+<hr />
+<h3 id="level-3">🌳 Level 3：网络服务</h3>
+<h4 id="7-vpn">7. VPN 服务器（从外网访问宿舍内网）</h4>
+<div class="codehilite"><pre><span></span><code>你在家里/外面 → VPN 加密隧道 → 你的路由器 → 宿舍内网
+                                      ↓
+                                 可以访问学校资源
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>luci-app-wireguard<span class="w">    </span><span class="c1"># 现代 VPN，性能好</span>
+<span class="c1"># 或</span>
+opkg<span class="w"> </span>install<span class="w"> </span>luci-app-openvpn<span class="w">      </span><span class="c1"># 传统 VPN，兼容性好</span>
+</code></pre></div>
+
+<p><strong>WireGuard vs OpenVPN</strong>：WireGuard 更新、更快、配置更简单（只需交换公钥）。OpenVPN 更老但生态成熟。对于 Cortex-A53 的 CPU，WireGuard 能跑 300-500 Mbps，OpenVPN 大约 100-200 Mbps。</p>
+<h4 id="8-ddns">8. DDNS（动态域名）</h4>
+<p>校园网的 IP 可能变化。DDNS 让你能用域名（如 <code>my-dorm.duckdns.org</code>）始终找到路由器。</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>luci-app-ddns
+<span class="c1"># 配合上面的 VPN，你在任何地方都能访问宿舍网络</span>
+</code></pre></div>
+
+<h4 id="9-dns-over-https-dns-over-tls">9. DNS over HTTPS / DNS over TLS</h4>
+<p>防止运营商/校园网对你的 DNS 查询进行监控和劫持。</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>https-dns-proxy<span class="w"> </span>luci-app-https-dns-proxy
+<span class="c1"># DNS 请求通过 HTTPS 加密发送到 Cloudflare/Google DNS</span>
+<span class="c1"># 校园网就算想劫持你的 DNS，也看不到内容</span>
+</code></pre></div>
+
+<hr />
+<h3 id="level-4">🏗️ Level 4：进阶玩法</h3>
+<h4 id="10-docker">10. Docker 容器（如果可以的话）</h4>
+<p>你的 256MB RAM 可能有点紧，但可以跑一些轻量容器。</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>luci-app-dockerman
+<span class="c1"># 部署：Home Assistant（智能家居）、Bitwarden（密码管理器）、</span>
+<span class="c1">#       Nextcloud（私有云盘）、Jellyfin（媒体服务器）</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>注意</strong>：256MB RAM 对 Docker 来说偏小。可以考虑跑一些内存友好型服务（如 <code>nginx</code>、<code>redis</code>、<code>gitea</code> 等）。</p>
+</blockquote>
+<h4 id="11_1">11. 软路由 / 透明代理</h4>
+<p>这是很多玩家刷 OpenWrt 的终极目的：</p>
+<div class="codehilite"><pre><span></span><code>路由器作为网关 + 分流器：
+  国内流量 → 直连（速度快）
+  国外流量 → 代理（畅通）
+  广告流量 → 拦截（不浪费带宽）
+</code></pre></div>
+
+<p>常见方案：<br />
+- <strong>PassWall / SSR-Plus / OpenClash</strong>：集成代理客户端，支持分流规则<br />
+- <strong>SmartDNS</strong>：国内外 DNS 分流，防止 DNS 污染</p>
+<blockquote>
+<p><strong>法律提醒</strong>：合理使用，遵守相关法律法规。</p>
+</blockquote>
+<h4 id="12-ipv6">12. IPv6 公网访问</h4>
+<p>校园网可能分配了公网 IPv6 地址（注意看 <code>ip addr</code> 里的 <code>inet6</code> 地址）。IPv6 每个设备都有公网 IP，无需 NAT！</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 在防火墙中放行 IPv6 特定端口</span>
+<span class="c1"># 然后你可以从任何地方直接访问宿舍的设备</span>
+</code></pre></div>
+
+<h4 id="13-8021x-wpa-enterprise">13. 802.1X 认证（WPA-Enterprise）</h4>
+<p>如果校园网不是开放+Portal 而是需要输入用户名密码的 WPA-Enterprise（802.1X）：</p>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>install<span class="w"> </span>wpa-supplicant
+<span class="c1"># 配置 /etc/wpa_supplicant.conf</span>
+<span class="c1"># 支持 PEAP/TTLS/TLS 等企业 WiFi 认证方式</span>
+</code></pre></div>
+
+<hr />
+<h3 id="level-5">🧪 Level 5：开发者之路</h3>
+<h4 id="14-linux">14. 学 Linux 系统管理</h4>
+<p>这台路由器 = 一台真 Linux 服务器。你可以：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 学 shell 脚本</span>
+<span class="c1"># 学 cron 定时任务</span>
+<span class="c1"># 学 iptables/nftables 防火墙</span>
+<span class="c1"># 学 tcpdump 抓包分析</span>
+<span class="c1"># 学 syslog 日志管理</span>
+<span class="c1"># 学 init.d/procd 服务管理</span>
+</code></pre></div>
+
+<h4 id="15_1">15. 硬件改造（进阶）</h4>
+<ul>
+<li><strong>加装风扇/散热片</strong>：主动散热可以超频</li>
+<li><strong>换天线</strong>：更换高增益天线，增强信号覆盖</li>
+<li><strong>TTL 串口调试</strong>：主板上有 TTL 焊点，连接 USB-TTL 模块后可以直接看到 U-Boot 和内核输出（救砖用）</li>
+</ul>
+<hr />
+<h3 id="_13">硬件限制清单</h3>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>AX3000T 的实际情况</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RAM: 256MB</td>
+<td>跑 OpenWrt+常规服务够用</td>
+<td>跑 Docker/大型服务吃力</td>
+</tr>
+<tr>
+<td>Flash: 128MB (78MB可用)</td>
+<td>可装几十个包</td>
+<td>大文件存储不够</td>
+</tr>
+<tr>
+<td>CPU: 双核 A53 1.3GHz</td>
+<td>日常够用</td>
+<td>VPN 加密/VLAN 大量规则会吃 CPU</td>
+</tr>
+<tr>
+<td>USB 口</td>
+<td>❌ AX3000T 可能没有</td>
+<td>无法直接接 U 盘/打印机</td>
+</tr>
+<tr>
+<td>SD 卡槽</td>
+<td>❌ 没有</td>
+<td>无法扩展存储</td>
+</tr>
+<tr>
+<td>WiFi 6</td>
+<td>✅ 支持</td>
+<td>新设备有更好体验</td>
+</tr>
+<tr>
+<td>硬件加密引擎</td>
+<td>✅ EIP197</td>
+<td>WireGuard/IPSec 可以硬件加速</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3_1">扩展篇 3：路由器的启动过程</h2>
+<blockquote>
+<p>理解启动过程对调试和救砖非常重要。</p>
+</blockquote>
+<h3 id="_14">按下电源键之后……</h3>
+<div class="codehilite"><pre><span></span><code>    通电
+      │
+      ▼
+  ┌──────────┐
+  │  BL2      │  ← Boot Loader Stage 2
+  │  (ROM里)  │     芯片出厂烧死的，无法修改
+  │           │     初始化 DDR 内存
+  │           │     加载 FIP 到内存
+  └────┬─────┘
+       │
+       ▼
+  ┌──────────┐
+  │  FIP      │  ← Firmware Image Package
+  │  (Flash里)│     包含: U-Boot + ATF (ARM Trusted Firmware)
+  │           │     ATF 配置安全环境 (TrustZone)
+  │           │     U-Boot 初始化外设、读环境变量
+  └────┬─────┘
+       │
+       ▼
+  ┌──────────┐
+  │  U-Boot   │  ← 开源引导加载程序
+  │           │     检查环境变量 (从哪里启动)
+  │           │     从 ubi_kernel 分区加载 Linux 内核
+  │           │     传递内核参数 (cmdline)
+  └────┬─────┘
+       │
+       ▼
+  ┌──────────┐
+  │  Linux    │  ← 内核启动
+  │  Kernel   │     初始化驱动 (WiFi, 网卡, NAND...)
+  │           │     挂载 squashfs 到 /rom
+  │           │     挂载 ubifs 到 /overlay
+  │           │     组合 overlayfs 为根文件系统 /
+  └────┬─────┘
+       │
+       ▼
+  ┌──────────┐
+  │  init     │  ← 第一个用户态进程 (PID 1)
+  │  (procd)  │     读取 /etc/inittab
+  │           │     启动各服务 (network, firewall, dnsmasq...)
+  │           │     LuCI Web 界面启动
+  └────┬─────┘
+       │
+       ▼
+   🟢 正常运行
+</code></pre></div>
+
+<h3 id="_15">什么是"砖"和怎么救</h3>
+<div class="codehilite"><pre><span></span><code>砖的状态:
+  - &quot;软砖&quot; (Soft Brick): 系统启动失败但 U-Boot 正常
+    → 通过 U-Boot 的 TFTP/HTTP 恢复模式重刷固件
+
+  - &quot;硬砖&quot; (Hard Brick): BL2 或 FIP 损坏
+    → 需要用 TTL 串口 + 编程器重写 Flash (非常麻烦)
+</code></pre></div>
+
+<p><strong>AX3000T 的 U-Boot 恢复模式</strong>：按住 Reset 键再通电，U-Boot 进入恢复模式，可以通过网线把固件 TFTP 刷入。这是最常用的救砖方式。</p>
+<blockquote>
+<p><strong>小白保命法则</strong>：<br />
+1. 千万不要动 mtd0-mtd4（BL2, Nvram, Bdata, Factory, FIP）<br />
+2. 刷机只操作 mtd8 和 mtd9（ubi_kernel 和 ubi）<br />
+3. 备份 Factory 分区——丢了 WiFi 就废了<br />
+4. 只要 BL2+FIP 完好，路由器就一定能救回来</p>
+</blockquote>
+<hr />
+<hr />
+<h2 id="phase-62026-06-04">Phase 6：网络延迟监控工具（2026-06-04）</h2>
+<h3 id="_16">目标</h3>
+<p>开发一套基于 Windows 内置 curl.exe 的校园网延迟监控工具，无需安装任何第三方软件。</p>
+<h3 id="61">6.1 需求分析</h3>
+<p>用户需要：<br />
+1. 实时监控多个站点的 TCP/SSL 延迟<br />
+2. 可视化展示（折线图、柱状图、颜色分级）<br />
+3. 压力测试功能（多轮采样）<br />
+4. 前后对比功能（对比两次测试结果）<br />
+5. 双击启动，不需要手动开 PowerShell</p>
+<h3 id="62">6.2 技术方案</h3>
+<p><strong>测量原理</strong>：</p>
+<div class="codehilite"><pre><span></span><code>curl -s -m 5 -w &quot;%{time_connect} %{time_appconnect}&quot; -o NUL URL
+
+返回两个值（秒）：
+  time_connect     → TCP 建联耗时
+  time_appconnect  → SSL 握手耗时（HTTP 站点无此值）
+
+乘以 1000 转换为毫秒
+</code></pre></div>
+
+<p><strong>监控站点（14个）</strong>：<br />
+- 内网网关：192.168.1.1（仅 TCP）<br />
+- 国内站点：百度、B站、网易、京东、QQ、淘宝、微博、知乎、新浪<br />
+- 国际站点：Cloudflare、GitHub、微软、Apple</p>
+<h3 id="63">6.3 开发过程与踩坑</h3>
+<h4 id="1powershell-unicode">坑 1：PowerShell Unicode 编码问题</h4>
+<p><strong>现象</strong>：脚本中有 <code>═</code>（Unicode 双横线）和 <code>─</code>（Unicode 单横线）等特殊字符，PowerShell 5.1 解析器报错 <code>TerminatorExpectedAtEndOfString</code>。</p>
+<p><strong>根因</strong>：Windows PowerShell 5.1 对 UTF-8 无 BOM 文件中的多字节 Unicode 字符解析有 bug。</p>
+<p><strong>解决</strong>：<br />
+1. 把所有 Unicode 制表符替换为 ASCII 字符（<code>═</code> → <code>=</code>，<code>─</code> → <code>-</code>）<br />
+2. 用 <code>[System.Text.UTF8Encoding(true)]</code> 给 PS1 文件加 UTF-8 BOM 头</p>
+<div class="codehilite"><pre><span></span><code><span class="nv">$content</span> <span class="p">=</span> <span class="no">[System.IO.File]</span><span class="p">::</span><span class="n">ReadAllText</span><span class="p">(</span><span class="nv">$path</span><span class="p">,</span> <span class="no">[System.Text.Encoding]</span><span class="p">::</span><span class="n">UTF8</span><span class="p">)</span>
+<span class="nv">$utf8Bom</span> <span class="p">=</span> <span class="nb">New-Object</span> <span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">UTF8Encoding</span><span class="p">(</span><span class="nv">$true</span><span class="p">)</span>
+<span class="no">[System.IO.File]</span><span class="p">::</span><span class="n">WriteAllText</span><span class="p">(</span><span class="nv">$path</span><span class="p">,</span> <span class="nv">$content</span><span class="p">,</span> <span class="nv">$utf8Bom</span><span class="p">)</span>
+</code></pre></div>
+
+<h4 id="2_1">坑 2：光标定位刷新显示乱码</h4>
+<p><strong>现象</strong>：用 <code>[Console]::SetCursorPosition(0, $line)</code> 做局部刷新，输出严重错位，只显示片段如 <code>0%)</code>, <code>(0%)</code>。</p>
+<p><strong>根因</strong>：<code>SetCursorPosition</code> 在某些终端环境下（特别是通过 Claude Code 的 bash 工具调用时）不可靠。缓冲区输出 <code>StringBuilder</code> + <code>Write-Host -NoNewline</code> 的组合在非交互式管道中表现异常。</p>
+<p><strong>解决</strong>：放弃光标定位方案，改用 <code>Clear-Host</code> 全屏刷新。虽然有轻微闪烁，但显示稳定可靠。</p>
+<h4 id="3batch">坑 3：Batch 文件中文编码闪退</h4>
+<p><strong>现象</strong>：双击 <code>启动监控.bat</code> 立即闪退，报错 <code>'cho' 不是内部或外部命令</code>。</p>
+<p><strong>根因</strong>：Batch 文件用 UTF-8 编码保存，但 cmd.exe 期望 ANSI（系统默认编码）。UTF-8 的多字节中文字符被 cmd.exe 错误解析，导致命令碎片化。</p>
+<p><strong>解决</strong>：<br />
+1. 用 PowerShell 的 <code>[System.Text.Encoding]::Default</code>（ANSI）重新写入 batch 文件<br />
+2. 菜单文字改用英文避免编码问题<br />
+3. 添加 <code>cd /d "%~dp0"</code> 确保工作目录正确</p>
+<div class="codehilite"><pre><span></span><code><span class="no">[System.IO.File]</span><span class="p">::</span><span class="n">WriteAllText</span><span class="p">(</span><span class="nv">$path</span><span class="p">,</span> <span class="nv">$content</span><span class="p">,</span> <span class="no">[System.Text.Encoding]</span><span class="p">::</span><span class="k">Default</span><span class="p">)</span>
+</code></pre></div>
+
+<h4 id="4-bash">坑 4：中文文件名在 Bash 中不可见</h4>
+<p><strong>现象</strong>：在 Git Bash 中 <code>ls</code> 看不到中文名的 PS1 文件。</p>
+<p><strong>根因</strong>：Git Bash 的终端编码默认不是 UTF-8。</p>
+<p><strong>解决</strong>：文件名保持英文或用简单的中文，不影响 Windows 资源管理器中的正常使用。</p>
+<h3 id="64">6.4 最终文件结构</h3>
+<div class="codehilite"><pre><span></span><code>监控工具/
+├── start.bat          ← ANSI 编码，双击启动菜单
+├── Monitor.ps1        ← 实时监控（0.1秒刷新，XY折线图，网速，流量）
+├── StressTest.ps1     ← 压力测试（站点可选×轮数可选）
+├── Compare.ps1        ← 对比两次测试结果
+└── 测试记录/           ← 自动保存的 JSON 数据
+</code></pre></div>
+
+<h3 id="65-v7x">6.5 功能清单（v7.x）</h3>
+<p><strong>Monitor.ps1 实时监控</strong>：<br />
+- 9 个站点（1 网关 + 8 外网），可选择部分或全部<br />
+- 并行测量（Start-Job），curl 超时 2 秒<br />
+- 实时网卡吞吐量（Get-NetAdapterStatistics），0.1 秒刷新<br />
+- 带宽容量测试（Cloudflare/腾讯/阿里 CDN），每 30 秒一次<br />
+- 累计流量统计（从监控开始计算）<br />
+- XY 坐标折线图（Y 轴用 P5-P95 百分位缩放，忽略尖峰）<br />
+- 颜色分级：绿(&lt;50ms) 黄(50-150ms) 红(&gt;150ms/FAIL)<br />
+- 结果自动保存为 JSON</p>
+<p><strong>StressTest.ps1 压力测试</strong>：<br />
+- 站点选择菜单（1,3,5 或 1-5 或 all）<br />
+- 轮数选择（10/30/60/100）<br />
+- TCP+SSL 延迟统计（Avg/Min/Max/P50/P95/P99/Jitter）<br />
+- 柱状图、走势图、稳定性排名、网络质量评估</p>
+<p><strong>Compare.ps1 对比工具</strong>：<br />
+- 列出所有测试记录<br />
+- 选择两次测试对比<br />
+- 显示每个站点的延迟变化趋势</p>
+<h3 id="65">6.5 关键技术点</h3>
+<p><strong>统计指标</strong>：<br />
+- Avg（平均值）、Min（最小值）、Max（最大值）<br />
+- P50（中位数）、P95（第95百分位）、P99（第99百分位）<br />
+- Jitter（抖动/标准差）— 衡量稳定性</p>
+<p><strong>颜色分级</strong>：<br />
+- 绿色：TCP &lt; 50ms（正常）<br />
+- 黄色：TCP 50-150ms（偏慢）<br />
+- 红色：TCP &gt; 150ms（很慢）</p>
+<p><strong>折线图实现</strong>：</p>
+<div class="codehilite"><pre><span></span><code>画布: 8行 × 50列 字符矩阵
+数据: 最近30个采样点
+映射: 值 → 行号（归一化到 0-7）
+填充: 数据点用 &#39;*&#39;，下方用 &#39;.&#39;
+</code></pre></div>
+
+<p><strong>结果保存</strong>：每次测试结束自动保存为 JSON 文件到 <code>测试记录/</code> 目录，文件名含时间戳，支持后续对比。</p>
+<h3 id="66">6.6 教训总结</h3>
+<table>
+<thead>
+<tr>
+<th>教训</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PowerShell 5.1 的 Unicode 支持很差</td>
+<td>中文路径、特殊字符都可能出问题，必须加 BOM</td>
+</tr>
+<tr>
+<td>Batch 文件必须用 ANSI 编码</td>
+<td>UTF-8 会导致 cmd.exe 解析错误</td>
+</tr>
+<tr>
+<td><code>Clear-Host</code> 比 <code>SetCursorPosition</code> 可靠</td>
+<td>虽然有闪烁，但不会出错</td>
+</tr>
+<tr>
+<td>嵌入式脚本避免复杂终端操作</td>
+<td>简单的 Write-Host 输出最稳定</td>
+</tr>
+<tr>
+<td>给用户留"退出后看结果"的路径</td>
+<td>Ctrl+C 后的 finally 块是关键</td>
+</tr>
+<tr>
+<td>并行测量用 Start-Job</td>
+<td>顺序测量 N 个站点 = N×超时时间，并行 = 1×超时时间</td>
+</tr>
+<tr>
+<td>网卡统计比下载文件更实时</td>
+<td>Get-NetAdapterStatistics 每 0.1 秒可读，不消耗带宽</td>
+</tr>
+<tr>
+<td>带宽容量需要单独测</td>
+<td>网卡统计只显示当前使用量，不是最大容量</td>
+</tr>
+<tr>
+<td>百分位缩放忽略尖峰</td>
+<td>P5-P95 范围做 Y 轴，避免一个尖峰把图表压扁</td>
+</tr>
+<tr>
+<td>国际站点从校园网可能超时</td>
+<td>curl -m 2 秒快速失败，不影响其他站点刷新</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<hr />
+<p><a name="phase7"></a></p>
+<h2 id="phase-72026-06-06">Phase 7：旧设备连接导致断网问题排查与修复（2026-06-06）</h2>
+<h3 id="_17">问题描述</h3>
+<p><strong>症状</strong>：有旧设备连接到路由器 WiFi 时，路由器似乎会断网，导致所有设备都无法上网。</p>
+<p>用户报告当旧手机/旧笔记本连上宿舍 WiFi 后，网络会短暂中断，过一会儿自动恢复。如果不恢复，需要手动重启或等 cron 触发重连。</p>
+<h3 id="71">7.1 诊断过程</h3>
+<h4 id="ssh">第一步：直接 SSH 到路由器排查</h4>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
+</code></pre></div>
+
+<p>确认系统状态：<br />
+- ImmortalWrt 24.10.5 运行正常<br />
+- 5G STA (phy1-sta0) 已连接 henu-student，信号 -61dBm，速率 400Mbps<br />
+- 2.4G AP (phy0-ap0) 正常广播 <code>可以和我在一起吗</code><br />
+- <strong>意外发现</strong>：5G radio 上还有一个 AP！<code>可以和我在一起吗-5G</code> (phy1-ap0)</p>
+<h4 id="5g">第二步：发现关键配置——5G 芯片双模运行</h4>
+<div class="codehilite"><pre><span></span><code>radio1 (5G MT7976C) — 同一块物理芯片
+├── phy1-sta0: STA 客户端 → 连接 henu-student (WAN出口)  频道52, 40MHz
+└── phy1-ap0: AP 热点     → 广播 &quot;可以和我在一起吗-5G&quot;    频道52, 80MHz ⚠️
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：这相当于让手机同时开热点和连 WiFi——同一个 WiFi 芯片要同时"接收"（连校园网）和"发射"（本地 5G 热点）。芯片只能通过时分复用来切换，就像一个人同时做两件事，必然会互相干扰。</p>
+</blockquote>
+<p><strong>两个关键问题</strong>：<br />
+1. STA 和 AP 共用同一频道（52）但<strong>频宽不匹配</strong>（STA 40MHz vs AP 80MHz）<br />
+2. 当 AP 侧有新设备连接（auth → assoc → WPA 握手），芯片需要短暂切换到 AP 模式处理</p>
+<h4 id="_18">第三步：日志铁证</h4>
+<div class="codehilite"><pre><span></span><code>logread<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;hostapd|odhcpd|route|disconnect&#39;</span>
+</code></pre></div>
+
+<p>发现关键日志：</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">22</span><span class="p">:</span><span class="mf">57</span><span class="p">:</span><span class="mf">32</span><span class="w">  </span><span class="n">设备</span><span class="w"> </span><span class="n">ea</span><span class="p">:</span><span class="n">d3</span><span class="p">:</span><span class="mf">9</span><span class="n">a</span><span class="mf">...</span><span class="w"> </span><span class="n">连接到</span><span class="w"> </span><span class="n">phy1</span><span class="o">-</span><span class="n">ap0</span><span class="w"> </span><span class="p">(</span><span class="mf">5</span><span class="n">G</span><span class="w"> </span><span class="n">AP</span><span class="p">)</span>
+<span class="mf">22</span><span class="p">:</span><span class="mf">57</span><span class="p">:</span><span class="mf">32</span><span class="w">  </span><span class="err">⚠️</span><span class="w"> </span><span class="n">odhcpd</span><span class="p">:</span><span class="w"> </span><span class="n">No</span><span class="w"> </span><span class="kd">def</span><span class="n">ault</span><span class="w"> </span><span class="n">route</span><span class="w"> </span><span class="n">present</span><span class="p">,</span><span class="w"> </span><span class="n">setting</span><span class="w"> </span><span class="n">ra_lifetime</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="mf">0</span><span class="err">!</span>
+<span class="mf">22</span><span class="p">:</span><span class="mf">57</span><span class="p">:</span><span class="mf">41</span><span class="w">  </span><span class="n">设备</span><span class="w"> </span><span class="mf">40</span><span class="p">:</span><span class="n">c7</span><span class="p">:</span><span class="mf">3</span><span class="n">c</span><span class="mf">...</span><span class="w"> </span><span class="n">连接到</span><span class="w"> </span><span class="n">phy0</span><span class="o">-</span><span class="n">ap0</span><span class="w"> </span><span class="p">(</span><span class="mf">2.4</span><span class="n">G</span><span class="w"> </span><span class="n">AP</span><span class="p">)</span>
+<span class="mf">22</span><span class="p">:</span><span class="mf">57</span><span class="p">:</span><span class="mf">41</span><span class="w">  </span><span class="err">⚠️</span><span class="w"> </span><span class="n">odhcpd</span><span class="p">:</span><span class="w"> </span><span class="n">No</span><span class="w"> </span><span class="kd">def</span><span class="n">ault</span><span class="w"> </span><span class="n">route</span><span class="w"> </span><span class="n">present</span><span class="p">,</span><span class="w"> </span><span class="n">setting</span><span class="w"> </span><span class="n">ra_lifetime</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="mf">0</span><span class="err">!</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<code>odhcpd</code> 是 OpenWrt 的 DHCPv6 + Router Advertisement 守护进程。它的 "No default route present" 错误意味着：<strong>路由器自己都不知道怎么上外网了</strong>——默认路由消失了！RA lifetime 设为 0 意味着告诉所有 IPv6 客户端"别用我上网"。</p>
+</blockquote>
+<p>dmesg 内核日志更进一步揭示了时序：</p>
+<div class="codehilite"><pre><span></span><code>[21.7s] phy1-ap0: entered forwarding state     ← 5G AP 上线
+[21.9s] phy1-ap0: left promiscuous mode        ← AP 被软件下线！
+[22.0s] br-lan: port 5(phy1-ap0) entered disabled state
+[24.0s] phy1-sta0: authenticate with henu-student  ← STA 开始认证
+[24.1s] phy1-sta0: associated
+[24.2s] phy1-ap0: entered forwarding state     ← AP 恢复
+</code></pre></div>
+
+<p><strong>问题链路完全清晰了</strong>：</p>
+<div class="codehilite"><pre><span></span><code>新设备连接 5G AP
+  → hostapd 处理关联/WPA握手
+    → mt76 驱动暂停 phy1-ap0 桥接端口
+      → br-lan 拓扑变化
+        → WiFi 芯片模式切换（80MHz ↔ 40MHz）
+          → phy1-sta0 (WAN) 短暂断连
+            → 默认路由丢失
+              → odhcpd 报警
+                → 所有设备断网 💀
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：整个过程可能只持续 0.5-2 秒，但 TCP 连接（HTTP、游戏、视频通话）对这种瞬时中断非常敏感。连接一断就需要重新建立，用户感知就是"网断了"。</p>
+</blockquote>
+<h4 id="_19">第四步：为什么"旧设备"更容易触发？</h4>
+<table>
+<thead>
+<tr>
+<th>旧设备特征</th>
+<th>导致的问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>仅支持 802.11n (WiFi 4) 或更老</td>
+<td>关联帧交换更多，WPA 握手更慢</td>
+</tr>
+<tr>
+<td>不支持 WMM Power Save</td>
+<td>芯片无法高效时分复用</td>
+</tr>
+<tr>
+<td>慢速 CPU 处理关联</td>
+<td>整个关联过程耗时更长（200-500ms vs 50ms）</td>
+</tr>
+<tr>
+<td>可能频繁漫游（2.4G↔5G）</td>
+<td>反复触发桥端口状态变化</td>
+</tr>
+<tr>
+<td>不支持 802.11ax (WiFi 6)</td>
+<td>无法利用 OFDMA 减少信道占用</td>
+</tr>
+</tbody>
+</table>
+<p>现代 WiFi 6 设备关联只需 ~50ms，不足以触发路由丢失。但旧设备可能需要 200-500ms，这个时间窗口足够让 STA 侧断连。</p>
+<h3 id="72">7.2 根因总结</h3>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>原因</th>
+<th>可能性</th>
+<th>证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🥇</td>
+<td><strong>5G 芯片 AP+STA 频宽不匹配</strong></td>
+<td>极高</td>
+<td>dmesg 明确显示 phy1-ap0 disable/enable 周期</td>
+</tr>
+<tr>
+<td>🥈</td>
+<td><strong>旧设备关联耗时长触发芯片切换</strong></td>
+<td>高</td>
+<td>logread 显示每次新设备连接伴随 odhcpd 路由丢失</td>
+</tr>
+<tr>
+<td>🥉</td>
+<td><strong>bridge 端口状态变化导致路由抖动</strong></td>
+<td>中</td>
+<td>br-lan port 5 进入 disabled 状态</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73">7.3 修复方案</h3>
+<p><strong>核心思路</strong>：不删除 5G AP（用户明确需要），而是从三个层面修复：<br />
+1. <strong>减少触发</strong>：对齐频宽，减少芯片模式切换<br />
+2. <strong>快速恢复</strong>：路由看门狗 + 改进的认证脚本<br />
+3. <strong>开机加速</strong>：init.d 启动脚本 + @reboot cron</p>
+<h4 id="15g-ap">修复 1：5G AP 频宽对齐（减少触发）</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 将 5G AP 频宽从 80MHz 降到 40MHz，与 STA 保持一致</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.radio1.htmode<span class="o">=</span><span class="s1">&#39;HE40&#39;</span>
+uci<span class="w"> </span>commit<span class="w"> </span>wireless
+wifi<span class="w"> </span>reload
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：频宽越大 = 速度越快但覆盖越小。80MHz 理论最大 1200Mbps，40MHz 理论最大 573Mbps。对于校园网 100Mbps 出口，40MHz 完全够用。而且 STA 连校园网本来就是 40MHz，AP 设 80MHz 反而会导致芯片需要在两种模式间切换——这本身就是触发故障的根源。</p>
+</blockquote>
+<h4 id="2_2">修复 2：路由看门狗脚本（快速恢复）</h4>
+<p>新建 <code>/etc/campus_network/route_watchdog.sh</code>：</p>
+<div class="codehilite"><pre><span></span><code><span class="ch">#!/bin/sh</span>
+<span class="c1"># 每20秒检测默认路由是否丢失</span>
+<span class="c1"># 如果丢失，立即尝试 DHCP 续租或 WiFi 重连</span>
+
+check_route<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>ip<span class="w"> </span>route<span class="w"> </span>show<span class="w"> </span>default<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;phy1-sta0&quot;</span>
+<span class="o">}</span>
+
+check_sta<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>iw<span class="w"> </span>dev<span class="w"> </span>phy1-sta0<span class="w"> </span>link<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;Connected&quot;</span>
+<span class="o">}</span>
+
+main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>check_route<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span><span class="w">  </span><span class="c1"># 路由正常，什么都不做</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="c1"># 路由丢失！立即恢复</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>check_sta<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>ifup<span class="w"> </span>wwan<span class="w">     </span><span class="c1"># STA还在，只需续租IP</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>wifi<span class="w"> </span>reload<span class="w">   </span><span class="c1"># STA也断了，需要完整重连</span>
+<span class="w">        </span>ifup<span class="w"> </span>wwan
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="c1"># 恢复后检查是否需要重新认证</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>ping<span class="w"> </span>-c<span class="w"> </span><span class="m">2</span><span class="w"> </span>-W<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">8</span>.8.8.8<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>/etc/campus_network/auto_login.sh<span class="w"> </span><span class="p">&amp;</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <code>ip route show default</code> 查默认路由。路由表是 Linux 内核决定"包往哪发"的规则表。如果默认路由没了，内核就不知道如何把包发到外网。<br />
+- <code>ifup wwan</code> 触发 udhcpc 重新向校园网 DHCP 服务器请求 IP 和路由。这个过程只需要 2-3 秒。<br />
+- 看门狗和认证脚本是<strong>解耦</strong>的：看门狗只管路由恢复（快），认证脚本只管 Portal 认证（慢）。</p>
+</blockquote>
+<h4 id="3v20">修复 3：增强版认证脚本（v2.0）</h4>
+<p>在 <code>/etc/campus_network/auto_login.sh</code> 中新增：</p>
+<ul>
+<li><strong><code>check_route()</code></strong>：检测默认路由是否存在</li>
+<li><strong><code>recover_route()</code></strong>：路由丢失时自动恢复（DHCP 续租 / WiFi 重连）</li>
+<li><strong>改进的 <code>main()</code></strong>：先查路由 → 再查网络 → 最后才走完整认证</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="c1"># 第一步：检查网络连通性</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>check_network<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>log<span class="w"> </span><span class="s2">&quot;网络已连通&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="c1"># 第二步：网络不通，先检查路由</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>check_route<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>log<span class="w"> </span><span class="s2">&quot;⚠️ 默认路由丢失，尝试恢复...&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>recover_route<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>check_network<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span>log<span class="w"> </span><span class="s2">&quot;✅ 路由恢复后网络已连通&quot;</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="c1"># 第三步：完整认证（路由存在但网络不通 = 认证过期）</span>
+<span class="w">    </span>full_auth
+<span class="o">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：旧版脚本只做一个检测（ping 8.8.8.8），不通就重认证。但"不通"有两种可能：路由丢了（需要续租 IP）和认证过期（需要 Portal 重登）。新版区分了这两种情况，对症下药。</p>
+</blockquote>
+<h4 id="4initd-reboot">修复 4：开机快速重连（init.d + @reboot）</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># /etc/init.d/campus_auth (START=99, 在网络就绪后执行)</span>
+<span class="c1"># 等待 WiFi STA 连接（最多 60 秒）</span>
+<span class="c1"># 等待获取 IP（最多 30 秒）</span>
+<span class="c1"># 立即触发认证</span>
+</code></pre></div>
+
+<p>Cron 备份：</p>
+<div class="codehilite"><pre><span></span><code><span class="nv">@reboot</span><span class="w"> </span><span class="n">sleep</span><span class="w"> </span><span class="mi">30</span><span class="p">;</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <code>START=99</code> 是 OpenWrt init 系统的优先级。数字越大越晚启动。99 意味着"等所有网络服务都好了再运行我"。<br />
+- <code>@reboot</code> 是 cron 的特殊时间——不是定时而是"开机时运行一次"。后面加 <code>sleep 30</code> 是给 WiFi 和 DHCP 留出初始化时间。<br />
+- 两种机制同时存在是为了冗余：init.d 是主力（快），@reboot 是兜底（稳）。</p>
+</blockquote>
+<h4 id="5cron">修复 5：Cron 优化（业内标准间隔）</h4>
+<div class="codehilite"><pre><span></span><code><span class="err">#</span><span class="w"> </span><span class="n">路由看门狗</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="n">每20秒</span><span class="err">（</span><span class="n">业内推荐的快速恢复间隔</span><span class="err">）</span>
+<span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">route_watchdog</span><span class="p">.</span><span class="n">sh</span>
+<span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">sleep</span><span class="w"> </span><span class="mi">20</span><span class="p">;</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">route_watchdog</span><span class="p">.</span><span class="n">sh</span>
+<span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">sleep</span><span class="w"> </span><span class="mi">40</span><span class="p">;</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">route_watchdog</span><span class="p">.</span><span class="n">sh</span>
+
+<span class="err">#</span><span class="w"> </span><span class="n">校园网认证</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="n">每3分钟</span><span class="err">（</span><span class="n">认证过期检测</span><span class="err">，</span><span class="n">不需要太频繁</span><span class="err">）</span>
+<span class="o">*/</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
+
+<span class="err">#</span><span class="w"> </span><span class="n">开机快速连接</span>
+<span class="nv">@reboot</span><span class="w"> </span><span class="n">sleep</span><span class="w"> </span><span class="mi">30</span><span class="p">;</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>为什么是 20 秒和 3 分钟？</strong><br />
+- <strong>路由看门狗 20 秒</strong>：路由丢失是"急症"，需要快速抢救。20 秒是业内高可用系统的标准心跳间隔——足够快到用户几乎无感知（恢复只需 2-3 秒 DHCP + 看门狗最多等 20 秒），又不至于频繁到消耗 CPU。<br />
+- <strong>认证 3 分钟</strong>：Portal 认证有效期通常几小时，过期是"慢病"，3 分钟检查一次绰绰有余。之前 1 分钟太激进，没必要地频繁访问认证服务器。</p>
+</blockquote>
+<h3 id="74">7.4 最终部署文件</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>位置</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto_login.sh</code> v2.0</td>
+<td><code>/etc/campus_network/</code></td>
+<td>增强认证（含路由检测与恢复）</td>
+</tr>
+<tr>
+<td><code>route_watchdog.sh</code></td>
+<td><code>/etc/campus_network/</code></td>
+<td>路由看门狗（每 20 秒）</td>
+</tr>
+<tr>
+<td><code>campus_auth</code></td>
+<td><code>/etc/init.d/</code></td>
+<td>开机启动认证（START=99）</td>
+</tr>
+<tr>
+<td><code>wireless</code></td>
+<td><code>/etc/config/</code></td>
+<td>radio1 频宽 HE80→HE40</td>
+</tr>
+</tbody>
+</table>
+<h3 id="75">7.5 验证方法</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 验证频宽已对齐</span>
+iw<span class="w"> </span>dev<span class="w"> </span>phy1-sta0<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>width<span class="w">    </span><span class="c1"># 应显示 40 MHz</span>
+iw<span class="w"> </span>dev<span class="w"> </span>phy1-ap0<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>width<span class="w">     </span><span class="c1"># 应显示 40 MHz（已对齐 ✅）</span>
+
+<span class="c1"># 2. 验证看门狗工作</span>
+<span class="c1"># 手动删除路由模拟故障：</span>
+ip<span class="w"> </span>route<span class="w"> </span>del<span class="w"> </span>default
+sleep<span class="w"> </span><span class="m">25</span>
+ip<span class="w"> </span>route<span class="w"> </span>show<span class="w"> </span>default<span class="w">   </span><span class="c1"># 应该已自动恢复</span>
+
+<span class="c1"># 3. 查看日志</span>
+tail<span class="w"> </span>-f<span class="w"> </span>/tmp/campus_network.log
+
+<span class="c1"># 4. 模拟断电恢复</span>
+reboot
+<span class="c1"># 等待 1-2 分钟后 SSH 回去，检查是否已自动上线</span>
+</code></pre></div>
+
+<h3 id="76">7.6 踩坑记录</h3>
+<h4 id="6-apsta">坑 6：同频 AP+STA 的隐形陷阱</h4>
+<p><strong>现象</strong>：5G WiFi 芯片同时做 AP 和 STA，平时看起来工作正常，但新设备连接时全网卡顿。</p>
+<p><strong>根因</strong>：mt76 驱动在处理 AP 侧客户端关联时，会短暂重配置无线硬件。这导致同一 radio 上的 STA 接口也受影响。频宽不匹配（AP 80MHz vs STA 40MHz）加剧了这个问题——每次模式切换需要更多时间。</p>
+<p><strong>解决</strong>：对齐频宽 + 路由看门狗快速恢复。</p>
+<p><strong>通用技巧</strong>：OpenWrt 上同频 AP+STA（"WiFi 中继"模式）本身就是一个 tradeoff。最佳实践是：<br />
+1. 尽量用不同频段（2.4G AP + 5G STA，如本项目）<br />
+2. 如果必须同频，确保频宽和信道参数完全一致<br />
+3. 始终部署路由/连接监控和自动恢复机制</p>
+<h4 id="7odhcpd-no-default-route">坑 7：odhcpd "No default route" 的含义</h4>
+<p><strong>现象</strong>：日志频繁出现 <code>odhcpd: No default route present</code>，但实际上 IPv4 默认路由还在。</p>
+<p><strong>根因</strong>：odhcpd 监控的是 IPv6 默认路由。当 WiFi 接口短暂抖动时，IPv6 路由先消失（因为 IPv6 需要 RA 通告），IPv4 路由可能还在。但 odhcpd 一旦检测到无默认路由，就会把 RA lifetime 设为 0——这会让所有 IPv6 客户端停止使用这个网关。</p>
+<p><strong>教训</strong>：这个日志是"煤矿里的金丝雀"——它不直接导致断网，但它是底层 WiFi/路由问题的早期信号。</p>
+<h3 id="77">7.7 教训总结</h3>
+<table>
+<thead>
+<tr>
+<th>教训</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>排查问题先 SSH 上去看实际配置</td>
+<td>不要依赖文档描述，路由器上的配置可能已经被改过</td>
+</tr>
+<tr>
+<td>dmesg 比 logread 更能揭示底层问题</td>
+<td>内核日志记录了驱动级别的状态变化</td>
+</tr>
+<tr>
+<td>同频 AP+STA 是对硬件的极限压榨</td>
+<td>不是不能用，但必须做好防护和快速恢复</td>
+</tr>
+<tr>
+<td>频宽不匹配是隐形杀手</td>
+<td>看起来都能工作，实际上在频繁切换</td>
+</tr>
+<tr>
+<td>路由监控比认证监控更重要</td>
+<td>路由丢了一切都白搭，认证只是"最后一公里"</td>
+</tr>
+<tr>
+<td>解耦看门狗和认证逻辑</td>
+<td>各有各的节奏，互不干扰</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><a name="phase10"></a></p>
+<h2 id="phase-10-v22026-06-08">Phase 10：旧设备重连断网修复 v2——快速恢复守护进程（2026-06-08）</h2>
+<blockquote>
+<p><strong>背景</strong>：Phase 7 的修复（频宽对齐 + cron看门狗）缓解了问题，但未根治。<br />
+用户反馈：旧设备离开后又回来，挂机游戏仍然会长时间断网，提示"网络异常"。</p>
+</blockquote>
+<h3 id="100">10.0 问题复现与深度诊断</h3>
+<h4 id="_20">用户报告的症状</h4>
+<blockquote>
+<p>"每当我旧设备离开后又回来，我挂机的游戏又会直接断开，而且不是短暂的断开，而是一段比较长时间的断开导致他提示我网络异常"</p>
+</blockquote>
+<p><strong>关键词</strong>：不是短暂断开、比较长时间、游戏提示网络异常。</p>
+<p>这说明恢复链路太慢——TCP 长连接（游戏、视频通话）对中断的容忍度通常只有 10-30 秒，超过就会触发"网络异常"弹窗。</p>
+<h4 id="ssh_1">深入 SSH 诊断</h4>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
+
+<span class="c1"># 发现1：phy1 同时运行 STA 和 AP</span>
+iw<span class="w"> </span>dev<span class="w"> </span>phy1-ap0<span class="w"> </span>info<span class="w">    </span><span class="c1"># channel 52, 40MHz, AP</span>
+iw<span class="w"> </span>dev<span class="w"> </span>phy1-sta0<span class="w"> </span>info<span class="w">   </span><span class="c1"># channel 52, 40MHz, STA</span>
+<span class="c1"># ⚠️ 同一芯片两个角色！</span>
+
+<span class="c1"># 发现2：cron 看门狗每20秒才检测一次</span>
+crontab<span class="w"> </span>-l
+<span class="c1"># * * * * * /etc/campus_network/route_watchdog.sh</span>
+<span class="c1"># * * * * * sleep 20; /etc/campus_network/route_watchdog.sh</span>
+<span class="c1"># * * * * * sleep 40; /etc/campus_network/route_watchdog.sh</span>
+
+<span class="c1"># 发现3：认证日志显示历史断网事件</span>
+cat<span class="w"> </span>/tmp/campus_network.log
+<span class="c1"># [Watchdog] ⚠️ 默认路由丢失！</span>
+<span class="c1"># [Watchdog] STA 已断开，重新连接 WiFi...</span>
+<span class="c1"># → 恢复时间通常在 30-50 秒</span>
+</code></pre></div>
+
+<h3 id="101-v2">10.1 根因分析 v2：为什么断网时间这么长？</h3>
+<p>Phase 7 已经发现了"同芯片 STA+AP 互相干扰"的根因。但用户反馈问题仍然存在，说明<strong>恢复速度不够快</strong>。</p>
+<h4 id="_21">完整恢复链路的时间分解</h4>
+<div class="codehilite"><pre><span></span><code><span class="err">旧设备重连</span><span class="w"> </span><span class="mi">5</span><span class="n">G</span><span class="w"> </span><span class="n">AP</span>
+<span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="err">驱动处理</span><span class="w"> </span><span class="n">WPA2</span><span class="w"> </span><span class="err">握手，挂起</span><span class="w"> </span><span class="n">STA</span><span class="w"> </span><span class="err">接口</span><span class="p">)</span>
+<span class="n">phy1</span><span class="o">-</span><span class="n">sta0</span><span class="w"> </span><span class="err">断开</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">默认路由丢失</span><span class="w">  </span>
+<span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="err">等待</span><span class="w"> </span><span class="n">cron</span><span class="w"> </span><span class="err">看门狗触发</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="err">最长</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="err">秒！</span><span class="p">)</span><span class="w">      </span><span class="err">←</span><span class="w"> </span><span class="err">🔴</span><span class="w"> </span><span class="err">瓶颈</span><span class="mi">1</span>
+<span class="n">route_watchdog</span><span class="o">.</span><span class="n">sh</span><span class="w"> </span><span class="err">检测到路由丢失</span>
+<span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="n">wifi</span><span class="w"> </span><span class="n">reload</span><span class="w"> </span><span class="err">完整重置无线</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="mi">5</span><span class="o">~</span><span class="mi">8</span><span class="w"> </span><span class="err">秒</span><span class="p">)</span><span class="w">          </span><span class="err">←</span><span class="w"> </span><span class="err">🔴</span><span class="w"> </span><span class="err">瓶颈</span><span class="mi">2</span>
+<span class="n">STA</span><span class="w"> </span><span class="err">重新连接到</span><span class="w"> </span><span class="n">henu</span><span class="o">-</span><span class="n">student</span>
+<span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="n">DHCP</span><span class="w"> </span><span class="err">获取</span><span class="w"> </span><span class="n">IP</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="mi">2</span><span class="o">~</span><span class="mi">3</span><span class="w"> </span><span class="err">秒</span><span class="p">)</span>
+<span class="n">ifup</span><span class="w"> </span><span class="n">wwan</span><span class="w"> </span><span class="err">完成</span>
+<span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="err">校园网</span><span class="w"> </span><span class="n">Portal</span><span class="w"> </span><span class="err">认证过期，需重新认证</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="mi">10</span><span class="o">~</span><span class="mi">15</span><span class="err">秒</span><span class="p">)</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="err">🔴</span><span class="w"> </span><span class="err">瓶颈</span><span class="mi">3</span>
+<span class="err">恢复外网</span>
+<span class="err">────────────────────────────────────────────────</span>
+<span class="err">总断网时间</span><span class="p">:</span><span class="w"> </span><span class="err">最长</span><span class="w"> </span><span class="mi">48</span><span class="w"> </span><span class="err">秒，最短</span><span class="w"> </span><span class="mi">25</span><span class="w"> </span><span class="err">秒</span>
+<span class="err">游戏</span><span class="w"> </span><span class="n">TCP</span><span class="w"> </span><span class="err">超时阈值</span><span class="p">:</span><span class="w"> </span><span class="o">~</span><span class="mi">20</span><span class="w"> </span><span class="err">秒</span>
+<span class="err">→</span><span class="w"> </span><span class="err">必然触发</span><span class="s2">&quot;网络异常&quot;</span><span class="w"> </span><span class="err">❌</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：TCP 长连接有一层"心跳"机制。如果超过一定时间（通常是 15-30秒）没收到对方的数据包，TCP 就认为连接断了，触发"Connection timeout"。游戏就是靠这个来判断网络状态的。</p>
+</blockquote>
+<h4 id="_22">三个瓶颈的量化分析</h4>
+<table>
+<thead>
+<tr>
+<th>瓶颈</th>
+<th>当前方案</th>
+<th style="text-align: center;">耗时</th>
+<th>优化方向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>检测</td>
+<td>cron 轮询 20秒</td>
+<td style="text-align: center;"><strong>0~20s</strong></td>
+<td>持续监控 → 1s</td>
+</tr>
+<tr>
+<td>恢复</td>
+<td><code>wifi reload</code> 全量重置</td>
+<td style="text-align: center;"><strong>5~8s</strong></td>
+<td><code>iw connect</code> 直连 → 2s</td>
+</tr>
+<tr>
+<td>认证</td>
+<td>三步 Portal 认证</td>
+<td style="text-align: center;"><strong>10~15s</strong></td>
+<td>保持会话不过期</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td></td>
+<td style="text-align: center;"><strong>25~48s</strong></td>
+<td><strong>目标 &lt; 5s</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="102">10.2 修复方案</h3>
+<p><strong>核心思路</strong>：三个层面同时优化——</p>
+<table>
+<thead>
+<tr>
+<th>层面</th>
+<th>策略</th>
+<th>手段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🛡️ <strong>预防</strong></td>
+<td>减少 STA 被干扰的可能</td>
+<td>锁定信道、关闭省电/后台扫描、hostapd 优化</td>
+</tr>
+<tr>
+<td>⚡ <strong>检测</strong></td>
+<td>从 cron 轮询改为持续监控</td>
+<td>守护进程每秒检测</td>
+</tr>
+<tr>
+<td>🚀 <strong>恢复</strong></td>
+<td>从全量 wifi reload 改为精准恢复</td>
+<td><code>iw connect</code> 直连 + DHCP 续租</td>
+</tr>
+</tbody>
+</table>
+<h4 id="1_1">修复 1：无线配置优化（预防层）</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1.1 锁定 5G 信道 — 防止 ACS 自动扫描触发 radio reset</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.radio1.channel<span class="o">=</span><span class="s1">&#39;52&#39;</span><span class="w">         </span><span class="c1"># 从 auto → 52</span>
+
+<span class="c1"># 1.2 hostapd 优化 — 减少客户端关联时的无线中断</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.wifinet0.disassoc_low_ack<span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="w">      </span><span class="c1"># 不因低ACK踢客户端</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.wifinet0.skip_inactivity_poll<span class="o">=</span><span class="s1">&#39;1&#39;</span><span class="w">  </span><span class="c1"># 跳过非活跃轮询</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.wifinet0.wpa_group_rekey<span class="o">=</span><span class="s1">&#39;86400&#39;</span><span class="w">   </span><span class="c1"># 每天才换组密钥</span>
+
+<span class="c1"># 1.3 STA 优化 — 关闭省电和后台扫描，防止主动离线</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.powersave<span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="w">       </span><span class="c1"># 关闭省电模式</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio1.bgscan<span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="w">          </span><span class="c1"># 禁止后台扫描</span>
+
+uci<span class="w"> </span>commit<span class="w"> </span>wireless
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <strong>ACS (Automatic Channel Selection)</strong> = 自动信道选择。设为 <code>auto</code> 时，驱动会定期扫描所有信道找最优的——这个扫描过程中 STA 会短暂离线。<br />
+- <strong>disassoc_low_ack</strong>：hostapd 默认会踢掉 ACK（确认信号）弱的客户端。设为 0 关闭这个行为，减少不必要的重关联。<br />
+- <strong>skip_inactivity_poll</strong>：hostapd 默认会定期轮询每个客户端是否还活着。跳过这个轮询可以减少无线芯片的压力。<br />
+- <strong>powersave</strong>：WiFi 省电模式。当 STA 进入省电模式时，它会告诉 AP "我要睡觉了"，AP 会缓存数据。问题是在同芯片 AP+STA 场景下，STA "睡觉"可能导致芯片进入低功耗状态，影响 AP 侧的客户端感知。关闭省电意味着略微多耗一点电（毫瓦级别，对插电路由器可以忽略）。<br />
+- <strong>bgscan</strong>（Background Scan）：wpa_supplicant 在后台扫描附近 WiFi 信号，用于漫游决策。禁用后 STA 不会主动切换信道扫描。</p>
+</blockquote>
+<h4 id="2_3">修复 2：快速恢复守护进程（检测+恢复层）</h4>
+<p>这是本次修复的<strong>核心</strong>。我们不依赖 cron 每 20 秒轮询，而是写一个<strong>持续运行的守护进程</strong>。</p>
+<p><strong>设计思路</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="bp">true</span><span class="p">:</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">ping</span><span class="w"> </span><span class="mf">8.8</span><span class="o">.</span><span class="mf">8.8</span><span class="w"> </span><span class="err">通</span><span class="p">:</span>
+<span class="w">        </span><span class="n">sleep</span><span class="w"> </span><span class="mi">1</span><span class="err">秒</span>
+<span class="w">        </span><span class="k">continue</span><span class="w">                      </span><span class="err">←</span><span class="w"> </span><span class="err">网络正常，什么都不做</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="err">默认路由丢失</span><span class="p">:</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">STA</span><span class="w"> </span><span class="err">还连着</span><span class="p">:</span>
+<span class="w">            </span><span class="n">DHCP</span><span class="w"> </span><span class="err">续租即可</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="err">只需</span><span class="w"> </span><span class="mi">2</span><span class="o">-</span><span class="mi">3</span><span class="w"> </span><span class="err">秒</span>
+<span class="w">        </span><span class="k">else</span><span class="p">:</span>
+<span class="w">            </span><span class="n">iw</span><span class="w"> </span><span class="n">connect</span><span class="w"> </span><span class="err">直连</span><span class="w"> </span><span class="n">STA</span><span class="w">        </span><span class="err">←</span><span class="w"> </span><span class="err">只需</span><span class="w"> </span><span class="mi">2</span><span class="o">-</span><span class="mi">3</span><span class="w"> </span><span class="err">秒（不用</span><span class="w"> </span><span class="n">wifi</span><span class="w"> </span><span class="n">reload</span><span class="err">！）</span>
+<span class="w">            </span><span class="n">DHCP</span><span class="w"> </span><span class="err">续租</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="err">路由存在但网络不通</span><span class="p">:</span>
+<span class="w">        </span><span class="err">触发认证脚本</span><span class="w">                   </span><span class="err">←</span><span class="w"> </span><span class="err">认证过期，需要</span><span class="w"> </span><span class="n">Portal</span><span class="w"> </span><span class="err">重登</span>
+
+<span class="w">    </span><span class="n">sleep</span><span class="w"> </span><span class="mi">1</span><span class="err">秒</span>
+</code></pre></div>
+
+<p><strong>关键优化细节</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 旧方案（慢）：wifi reload → 重置所有无线 → 8秒</span>
+wifi<span class="w"> </span>reload<span class="w"> </span><span class="m">2</span>&gt;/dev/null
+sleep<span class="w"> </span><span class="m">5</span>
+
+<span class="c1"># 新方案（快）：直接告诉 STA &quot;连这个 SSID，用这个频率&quot;</span>
+<span class="c1">#            跳过扫描阶段 → 2秒</span>
+iw<span class="w"> </span>dev<span class="w"> </span>phy1-sta0<span class="w"> </span>disconnect<span class="w"> </span><span class="m">2</span>&gt;/dev/null
+sleep<span class="w"> </span><span class="m">0</span>.5
+iw<span class="w"> </span>dev<span class="w"> </span>phy1-sta0<span class="w"> </span>connect<span class="w"> </span><span class="s2">&quot;henu-student&quot;</span><span class="w"> </span><span class="m">5260</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：<br />
+- <code>wifi reload</code> 的代价：它会停止 radio0 和 radio1 上所有虚拟接口（包括 2.4G AP！），然后重新创建它们。这意味着不仅是 STA 断了，宿舍的 2.4G WiFi 也短暂消失。总耗时 5-8秒。<br />
+- <code>iw connect</code> 只操作 phy1-sta0 这一个接口，不影响 2.4G AP。而且我们直接指定了目标频率（5260 MHz = 信道 52），让驱动跳过信道扫描。耗时 ~2 秒。<br />
+- <strong>5260 MHz 是什么？</strong> WiFi 信道 52 的中心频率。信道编号是给人看的，频率是给机器用的。<code>iw connect SSID FREQ</code> 直接告诉驱动"去这个地方找这个 WiFi"，省掉了扫描步骤。</p>
+</blockquote>
+<p><strong>守护进程的层级恢复策略</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="err">层级</span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="err">秒检测</span><span class="p">):</span><span class="w"> </span><span class="n">ping</span><span class="w"> </span><span class="mf">8.8</span><span class="o">.</span><span class="mf">8.8</span><span class="w"> </span><span class="err">通了</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">正常</span>
+<span class="err">层级</span><span class="mi">2</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="err">秒恢复</span><span class="p">):</span><span class="w"> </span><span class="err">路由丢了</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">STA在</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">DHCP续租</span>
+<span class="err">层级</span><span class="mi">3</span><span class="w"> </span><span class="p">(</span><span class="mi">5</span><span class="err">秒恢复</span><span class="p">):</span><span class="w"> </span><span class="err">路由丢了</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">STA不在</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">iw</span><span class="w"> </span><span class="n">connect直连</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">DHCP</span>
+<span class="err">层级</span><span class="mi">4</span><span class="w"> </span><span class="p">(</span><span class="mi">60</span><span class="err">秒冷却</span><span class="p">):</span><span class="w"> </span><span class="err">路由在但网络不通</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">触发认证（不频繁重试）</span>
+<span class="err">层级</span><span class="mi">5</span><span class="w"> </span><span class="p">(</span><span class="mi">30</span><span class="err">秒兜底</span><span class="p">):</span><span class="w"> </span><span class="err">持续失败</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">wifi</span><span class="w"> </span><span class="n">reload</span><span class="w"> </span><span class="err">完整重置</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>为什么需要"冷却时间"？</strong> 如果认证服务器暂时故障或者校园网 DHCP 抽风，不加冷却会每秒钟重试一次认证，对校园网服务器造成压力（可能被当作攻击封掉你的 IP）。60 秒冷却意味着两次认证之间至少隔 1 分钟。</p>
+</blockquote>
+<h4 id="3-cron">修复 3：替换 cron 看门狗</h4>
+<p>旧的 cron 看门狗：</p>
+<div class="codehilite"><pre><span></span><code><span class="k">*</span> * <span class="gs">* *</span> * /etc/campus_network/route_watchdog.sh          ← 每分钟第0秒
+<span class="k">*</span> * <span class="gs">* *</span> * sleep 20; /etc/campus_network/route_watchdog.sh ← 第20秒
+<span class="k">*</span> * <span class="gs">* *</span> * sleep 40; /etc/campus_network/route_watchdog.sh ← 第40秒
+</code></pre></div>
+
+<p>新的守护进程：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># init.d 服务，开机自动启动，procd 管理</span>
+/etc/init.d/fast_recovery<span class="w"> </span><span class="nb">enable</span>
+/etc/init.d/fast_recovery<span class="w"> </span>start
+</code></pre></div>
+
+<p>cron 只保留认证检测（每 3 分钟，不需要频繁）：</p>
+<div class="codehilite"><pre><span></span><code><span class="o">*/</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
+<span class="nv">@reboot</span><span class="w"> </span><span class="n">sleep</span><span class="w"> </span><span class="mi">30</span><span class="p">;</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
+<span class="mi">0</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="w"> </span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">reboot</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>为什么还要保留 3 分钟的认证检测？</strong> 守护进程虽然快，但它的认证触发有 60 秒冷却。如果守护进程在这一分钟内连续遇到了需要认证的情况，冷却时间内不会重试。cron 的 3 分钟认证检测作为兜底，确保认证永远不会漏掉。</p>
+</blockquote>
+<h3 id="103">10.3 部署测试</h3>
+<h4 id="_23">部署过程</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 上传守护进程脚本</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span>/etc/campus_network/fast_recovery_daemon.sh<span class="w"> </span><span class="s">&lt;&lt; &#39;EOF&#39;</span>
+<span class="s">...（完整脚本见 一键配置脚本/fast_recovery_daemon.sh）</span>
+<span class="s">EOF</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>/etc/campus_network/fast_recovery_daemon.sh
+
+<span class="c1"># 创建 init.d 服务</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span>/etc/init.d/fast_recovery<span class="w"> </span><span class="s">&lt;&lt; &#39;EOF&#39;</span>
+<span class="s">#!/bin/sh /etc/rc.common</span>
+<span class="s">START=98</span>
+<span class="s">USE_PROCD=1</span>
+<span class="s">start_service() { ... }</span>
+<span class="s">EOF</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>/etc/init.d/fast_recovery
+/etc/init.d/fast_recovery<span class="w"> </span><span class="nb">enable</span>
+
+<span class="c1"># 替换 cron</span>
+crontab<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>route_watchdog<span class="w"> </span><span class="p">|</span><span class="w"> </span>crontab<span class="w"> </span>-
+</code></pre></div>
+
+<h4 id="_24">实测验证</h4>
+<p>应用 <code>wifi reload</code> 后观察守护进程日志：</p>
+<div class="codehilite"><pre><span></span><code><span class="o">[</span><span class="n">21:05:52</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w"> </span><span class="err">🚀</span><span class="w"> </span><span class="n">快速恢复守护进程启动</span>
+<span class="o">[</span><span class="n">21:05:52</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w">    </span><span class="nl">检测间隔</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="n">秒</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nl">信道锁定</span><span class="p">:</span><span class="w"> </span><span class="mi">5260</span><span class="w"> </span><span class="n">MHz</span>
+<span class="o">[</span><span class="n">21:05:54</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w"> </span><span class="err">⚠️</span><span class="w"> </span><span class="n">网络不通</span><span class="err">，</span><span class="n">开始诊断</span><span class="p">...</span>
+<span class="o">[</span><span class="n">21:05:54</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w"> </span><span class="err">⚠️</span><span class="w"> </span><span class="n">默认路由丢失</span><span class="err">！</span><span class="p">(</span><span class="mi">1</span><span class="n">s</span><span class="p">)</span><span class="w">         </span><span class="err">←</span><span class="w"> </span><span class="mi">1</span><span class="n">秒检测</span><span class="err">！</span>
+<span class="o">[</span><span class="n">21:05:54</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w">     </span><span class="n">STA仍连接</span><span class="err">，</span><span class="n">执行DHCP续租</span><span class="p">...</span>
+<span class="o">[</span><span class="n">21:05:54</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w"> </span><span class="err">🔄</span><span class="w"> </span><span class="n">DHCP</span><span class="w"> </span><span class="n">续租</span><span class="p">...</span>
+<span class="o">[</span><span class="n">21:05:58</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">FastRecovery</span><span class="o">]</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="n">路由恢复成功</span><span class="err">，</span><span class="n">网络已通</span><span class="w">     </span><span class="err">←</span><span class="w"> </span><span class="mi">4</span><span class="n">秒恢复</span><span class="err">！</span>
+</code></pre></div>
+
+<p><strong>对比数据</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th style="text-align: center;">Phase 7 (cron看门狗)</th>
+<th style="text-align: center;">Phase 10 (守护进程)</th>
+<th style="text-align: center;">提升</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>检测延迟</td>
+<td style="text-align: center;">0~20 秒</td>
+<td style="text-align: center;">1 秒</td>
+<td style="text-align: center;"><strong>20×</strong></td>
+</tr>
+<tr>
+<td>恢复速度</td>
+<td style="text-align: center;">5~8 秒 (wifi reload)</td>
+<td style="text-align: center;">2~4 秒 (直连+DHCP)</td>
+<td style="text-align: center;"><strong>2×</strong></td>
+</tr>
+<tr>
+<td>总恢复时间</td>
+<td style="text-align: center;">25~48 秒</td>
+<td style="text-align: center;"><strong>4~8 秒</strong></td>
+<td style="text-align: center;"><strong>6×</strong></td>
+</tr>
+<tr>
+<td>对 2.4G AP 的影响</td>
+<td style="text-align: center;">有（wifi reload 全部重置）</td>
+<td style="text-align: center;">无</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>5G AP 设备感知</td>
+<td style="text-align: center;">会掉线（radio 重置）</td>
+<td style="text-align: center;">不影响</td>
+<td style="text-align: center;">✅</td>
+</tr>
+</tbody>
+</table>
+<h3 id="104">10.4 关键洞察</h3>
+<h4 id="_25">为什么"旧设备"更容易触发问题？</h4>
+<p>诊断时发现两台正常设备（LAPTOP-TAYLOR 和 Honor 400）和一台 OPPO Reno 14 Pro 的详细信息：</p>
+<table>
+<thead>
+<tr>
+<th>设备</th>
+<th style="text-align: center;">天线</th>
+<th style="text-align: center;">关联耗时</th>
+<th style="text-align: center;">对芯片的冲击</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Honor 400</td>
+<td style="text-align: center;">2×2</td>
+<td style="text-align: center;">~50ms</td>
+<td style="text-align: center;">极小</td>
+</tr>
+<tr>
+<td>LAPTOP-TAYLOR</td>
+<td style="text-align: center;">2×2</td>
+<td style="text-align: center;">~50ms</td>
+<td style="text-align: center;">极小</td>
+</tr>
+<tr>
+<td>OPPO Reno 14 Pro</td>
+<td style="text-align: center;"><strong>1×1</strong></td>
+<td style="text-align: center;"><strong>200~500ms</strong></td>
+<td style="text-align: center;">较大</td>
+</tr>
+</tbody>
+</table>
+<p>OPPO 的 <code>long preamble</code>（长前导码）意味着它的 WiFi 固件使用较旧的握手方式——关联帧交换更多、WPA 握手更慢。整个过程耗时是正常设备的 4-10 倍。</p>
+<blockquote>
+<p><strong>前导码（Preamble）是什么？</strong> WiFi 帧的最开头部分，用于接收端同步时钟和检测帧的起始位置。<strong>Short preamble</strong> 只有 96 微秒（72 bits），<strong>Long preamble</strong> 需要 192 微秒（144 bits）。长期来看，long preamble 会让每个帧的开销多出一倍——在芯片需要频繁切换 STA/AP 模式的情况下，这些微秒级的开销累积起来就变成了毫秒级的延迟。</p>
+</blockquote>
+<p><strong>正常设备</strong>：关联耗时 50ms → STA 断连窗口窄 → 往往不出问题。<br />
+<strong>"旧设备"</strong>：关联耗时 200-500ms → STA 断连窗口宽 → <strong>几乎每次都会触发路由丢失</strong>。</p>
+<p>这就是为什么用户感觉"只有旧设备回来才断网"——不是因为"旧"，而是因为设备硬件差异导致了不同的关联耗时。</p>
+<h4 id="vs">单天线 vs 双天线的实际影响</h4>
+<p>OPPO Reno 14 Pro 只有 1 根天线（NSS=1）：</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">2</span><span class="err">×</span><span class="mf">2</span><span class="w"> </span><span class="n">设备理论最大速率</span><span class="p">:</span><span class="w"> </span><span class="mf">573.5</span><span class="w"> </span><span class="n">Mbps</span><span class="w"> </span><span class="p">(</span><span class="mf">40</span><span class="n">MHz</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="mf">6</span><span class="p">)</span>
+<span class="mf">1</span><span class="err">×</span><span class="mf">1</span><span class="w"> </span><span class="n">设备理论最大速率</span><span class="p">:</span><span class="w"> </span><span class="mf">286.7</span><span class="w"> </span><span class="n">Mbps</span><span class="w"> </span><span class="p">(</span><span class="mf">40</span><span class="n">MHz</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="mf">6</span><span class="p">)</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="n">减半</span>
+</code></pre></div>
+
+<p>但 286Mbps 对于校园网 100Mbps 出口完全够用。用户体验差异主要来自关联行为（long preamble）而非速率。</p>
+<h3 id="105">10.5 文件变更清单</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>操作</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/etc/campus_network/fast_recovery_daemon.sh</code></td>
+<td><strong>新建</strong></td>
+<td>快速恢复守护进程（核心）</td>
+</tr>
+<tr>
+<td><code>/etc/init.d/fast_recovery</code></td>
+<td><strong>新建</strong></td>
+<td>init.d 启动脚本 (START=98)</td>
+</tr>
+<tr>
+<td><code>/etc/config/wireless</code></td>
+<td>修改</td>
+<td>信道锁定 + hostapd优化 + powersave/bgscan</td>
+</tr>
+<tr>
+<td>crontab</td>
+<td>修改</td>
+<td>移除 route_watchdog 条目，保留认证检测</td>
+</tr>
+<tr>
+<td><code>一键配置脚本/fast_recovery_daemon.sh</code></td>
+<td><strong>新建</strong></td>
+<td>本地备份</td>
+</tr>
+</tbody>
+</table>
+<h3 id="106">10.6 踩坑记录</h3>
+<h4 id="8pidof-shell">坑 8：pidof 无法检测 shell 守护进程</h4>
+<p><strong>现象</strong>：启动守护进程后，<code>pidof fast_recovery_daemon.sh</code> 返回空，init.d 脚本认为启动失败。</p>
+<p><strong>根因</strong>：<code>pidof</code> 匹配的是<strong>可执行文件名</strong>。procd 以 <code>/bin/sh /etc/campus_network/fast_recovery_daemon.sh</code> 启动守护进程，进程的可执行文件是 <code>/bin/sh</code>，不是 <code>fast_recovery_daemon.sh</code>。</p>
+<p><strong>解决</strong>：用 <code>ps | grep fast_recovery</code> 检测进程是否运行，不用 <code>pidof</code>。</p>
+<h4 id="9wifi-reload">坑 9：wifi reload 后的抖动</h4>
+<p><strong>现象</strong>：wifi reload 后的 5-10 秒内，路由会经历"恢复→再丢→再恢复"的抖动。</p>
+<p><strong>根因</strong>：wifi reload 触发 radio 重建 → STA 重连 → DHCP 获取 IP → 设置路由。但在路由设置完成前，内核可能会短暂看到一个没有路由的中间状态。udhcpc 的 lease renew 过程也可能多次更新路由表。</p>
+<p><strong>解决</strong>：守护进程在恢复成功后加 1 秒检查间隔，避免在 DHCP 协商过程中反复触发恢复。这不是 bug，而是过渡态的正常行为。</p>
+<h3 id="107">10.7 教训总结</h3>
+<table>
+<thead>
+<tr>
+<th>教训</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cron 不适合做快速恢复</td>
+<td>最小粒度是分钟，20秒的多 cron hack 本质上是对机制缺陷的补偿</td>
+</tr>
+<tr>
+<td>持续守护进程 &gt; 轮询</td>
+<td>1 秒 vs 20 秒，这是 20 倍的响应速度差异</td>
+</tr>
+<tr>
+<td><code>iw connect SSID FREQ</code> 比 <code>wifi reload</code> 快 3-4 倍</td>
+<td>精准操作 vs 全量重置，且不影响其他接口</td>
+</tr>
+<tr>
+<td>预防 &gt; 恢复</td>
+<td>锁定信道、关闭省电/扫描是最便宜的"修复"</td>
+</tr>
+<tr>
+<td>关注关联行为而非速率</td>
+<td>1×1 设备速率减半不是问题，long preamble 的频繁重关联才是</td>
+</tr>
+<tr>
+<td>检测网络故障需要分层</td>
+<td>ping 通 → 正常 / 路由丢 → DHCP / STA 断 → 重连 / 路由在但 ping 不通 → 认证</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<blockquote>
+<p><strong>最后更新</strong>：2026-06-08 21:30<br />
+<strong>完成状态</strong>：🎉 Phase 0-10 全部完成<br />
+<strong>新增</strong>：Phase 10（旧设备重连断网修复 v2 + 快速恢复守护进程）</p>
+</blockquote>
+
+<div style="text-align:center;color:#94a3b8;font-size:0.85em;margin-top:3em;padding-top:1em;border-top:1px solid #e2e8f0;">
+  <p>📖 AX3000T 校园网自动认证项目 · 完整学习笔记</p>
+  <p>涵盖从路由器硬件原理到 OpenWrt 高级配置的全部知识点</p>
+  <p>最后更新: 2026-06-08</p>
+</div>
+
+</body>
+</html>

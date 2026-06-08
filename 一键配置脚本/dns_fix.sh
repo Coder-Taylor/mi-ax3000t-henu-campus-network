@@ -1,0 +1,84 @@
+#!/bin/sh
+# ============================================================
+#  校园网 DNS 修复脚本 v2.0
+#  修复：WiFi下无法访问校园网内部网站
+#
+#  问题1: 校园 DHCP DNS (111.6.174.198) 返回不可达IP
+#     zwyy.henu.edu.cn → 125.219.33.206   → /etc/hosts 写死
+#     xg.henu.edu.cn   → 172.31.0.6       → 114.114.114.114
+#     jwgl.henu.edu.cn → 211.142.109.84   → 111.6.174.198
+#
+#  问题2: dnsmasq rebind 丢弃 RFC1918 私有IP
+#     → rebind-domain-ok=/henu.edu.cn/
+#
+#  问题3: DNS返回IPv6, 但路由器无IPv6路由
+#     → filter_aaaa=1 (全局过滤AAAA)
+#
+#  用法：在路由器上运行  sh dns_fix.sh
+# ============================================================
+
+echo "================================================="
+echo " 校园网 DNS 修复工具 v2.0"
+echo "================================================="
+echo ""
+
+[ ! -f /etc/config/dhcp ] && echo "❌ 请在路由器上运行！" && exit 1
+
+cp /etc/config/dhcp /etc/config/dhcp.bak.$(date +%Y%m%d%H%M%S)
+echo "✅ 已备份 /etc/config/dhcp"
+
+# === Fix 1: /etc/hosts 静态解析（最可靠，不依赖DNS） ===
+if grep -q 'zwyy.henu.edu.cn' /etc/hosts; then
+    echo "  [skip] /etc/hosts: zwyy 已存在"
+else
+    echo '202.196.96.29 zwyy.henu.edu.cn' >> /etc/hosts
+    echo "  [add]  /etc/hosts: zwyy.henu.edu.cn → 202.196.96.29"
+fi
+
+# === Fix 2: 精确域名 DNS 转发 ===
+for item in "xg.henu.edu.cn:114.114.114.114" "jwgl.henu.edu.cn:111.6.174.198"; do
+    domain=${item%%:*}
+    dns=${item##*:}
+    if uci show dhcp 2>/dev/null | grep -q "server.*${domain}.*${dns}"; then
+        echo "  [skip] ${domain} -> ${dns} (已存在)"
+    else
+        uci add_list dhcp.@dnsmasq[0].server="/${domain}/${dns}"
+        echo "  [add]  ${domain} -> ${dns}"
+    fi
+done
+
+# === Fix 3: 过滤 AAAA 记录（路由器无IPv6，避免手机优先尝试IPv6超时） ===
+uci set dhcp.@dnsmasq[0].filter_aaaa='1'
+echo "  [set]  filter_aaaa=1 (过滤IPv6)"
+
+# === Fix 4: 允许 henu.edu.cn 返回 RFC1918 私有IP ===
+if grep -q 'rebind-domain-ok=/henu.edu.cn/' /etc/dnsmasq.conf; then
+    echo "  [skip] rebind-domain-ok=/henu.edu.cn/ (已存在)"
+else
+    echo 'rebind-domain-ok=/henu.edu.cn/' >> /etc/dnsmasq.conf
+    echo "  [add]  rebind-domain-ok=/henu.edu.cn/"
+fi
+
+# === Fix 5: 确保日志不被丢弃 ===
+sed -i 's/^log-facility=\/dev\/null/#log-facility=\/dev\/null/' /etc/dnsmasq.conf 2>/dev/null
+
+uci commit dhcp
+/etc/init.d/dnsmasq restart 2>/dev/null
+sleep 2
+
+echo ""
+echo "=== 验证 ==="
+for d in zwyy.henu.edu.cn jwgl.henu.edu.cn xg.henu.edu.cn; do
+    IP=$(nslookup $d 2>&1 | grep -oE 'Address: [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
+    if [ -z "$IP" ]; then
+        echo "  ⚠️  $d → 解析失败"
+    elif ping -c 1 -W 1 $IP >/dev/null 2>&1; then
+        echo "  ✅ $d → $IP"
+    else
+        echo "  ❌ $d → $IP (不可达)"
+    fi
+done
+echo ""
+echo "================================================="
+echo " 修复完成！切换飞行模式清除手机DNS缓存后再试。"
+echo "================================================="

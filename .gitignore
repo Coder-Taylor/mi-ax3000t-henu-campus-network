@@ -1,0 +1,46 @@
+# === 敏感文件 ===
+credentials.txt
+.ssh/ax3000t_rsa
+.ssh/ax3000t_rsa.pub
+
+# === 固件和二进制文件（太大，不适合 Git） ===
+*.bin
+*.img
+*.trx
+*.ubi
+*.zip
+*.rar
+*.7z
+
+# === 归档目录（旧固件/旧文件） ===
+_归档待删/
+
+# === 系统文件 ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE / 编辑器 ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Node.js ===
+node_modules/
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# === OS ===
+$RECYCLE.BIN/
+System Volume Information/
+
+# === 临时文件 ===
+*.tmp
+*.log
