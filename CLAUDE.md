@@ -4,6 +4,15 @@
 
 > **⚠️ 仓库规则**：每次对项目文件做任何修改后，必须 `git add -A && git commit -m "<描述>"` 并自动 push 到 Gitee。
 > 远程仓库：https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network
+>
+> **📝 开发流程**：每次对话/修改后，按需更新以下文件：
+> 1. `CLAUDE.md` — 如果步骤进度、运行状态、关键信息、文件导航有变化
+> 2. `开发日志.md` — 如果做了新的技术工作（新 Phase），含命令+原理
+> 3. `开发日志_按日期.md` — 按日期追加当日工作摘要
+> 4. `路由器当前状态.md` — 如果路由器配置有变化（IP/信道/SSID 等）
+> 5. `README.md` — 如果项目简介、快速开始、技术栈有变化
+> 6. `! re-generate HTML` — 修改 `开发日志.md` 后运行 `python 文档/convert_to_html.py`
+> 7. `git add -A && git commit -m "<描述>"` — 最后提交并推送
 
 ```
 步骤0: ✅ 刷写 ImmortalWrt 大分区固件
