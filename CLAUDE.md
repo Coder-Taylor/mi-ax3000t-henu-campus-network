@@ -15,17 +15,18 @@
 > 7. `git add -A && git commit -m "<描述>"` — 最后提交并推送
 
 ```
-步骤0: ✅ 刷写 ImmortalWrt 大分区固件
-步骤1: ✅ 系统固化（重启不丢失）
+步骤0: ✅ 刷写 ImmortalWrt 大分区固件（XMiR-Patcher 解锁SSH → 备份Factory → sysupgrade）
+步骤1: ✅ 系统固化（重启不丢失，overlay 78MB可用）
 步骤2: ✅ 安全加固（密码 + SSH密钥 + WiFi加密）
 步骤3: ✅ WiFi WAN 配置（5G STA连接henu-student）
 步骤4: ✅ 认证脚本部署（三步认证全通过）
-步骤5: ✅ cron定时重连（每5分钟检测）
+步骤5: ✅ 分层网络恢复（守护进程秒级恢复路由 + cron 5分钟兜底认证）
 步骤6: ✅ CAKE 智能流控（110Mbps 动态分配）
 步骤7: ✅ Argon 主题美化（可换壁纸）
-步骤8: ✅ 旧设备断网修复（频宽对齐 + 路由看门狗 + 启动加速）
+步骤8: ✅ 设备重连断网修复（频宽对齐 + 路由看门狗 + 启动加速）
 步骤9: ✅ 校园网内部网站 DNS 修复（henu.edu.cn → 114.114.114.114）
-步骤10: ✅ 旧设备重连断网修复 v2（快速恢复守护进程替代cron看门狗）
+步骤10: ✅ 设备重连断网修复 v2（快速恢复守护进程替代cron看门狗）
+步骤11: ✅ 广告拦截 adblock（DNS 层面，185,435 域名，全设备生效）
 ```
 
 ## 当前运行状态
@@ -35,7 +36,7 @@
 - **AP 5G**: phy1-ap0, SSID `<见 credentials.txt>-5G`, WPA2加密, ch52/40MHz
 - **信道**: 5GHz 已锁定 ch52（避免 ACS 触发 radio reset）
 - **守护进程**: fast_recovery_daemon 每秒检测，秒级恢复（替代 cron 20秒轮询）
-- **认证检测**: cron 每3分钟自动检测/重连
+- **认证检测**: cron 每5分钟自动检测/重连（守护进程每秒检测路由，秒级恢复）
 
 ## 关键信息
 - 路由器: `192.168.1.1` / `ssh ax3000t`（免密）
@@ -48,7 +49,9 @@
 - 启动脚本: `/etc/init.d/campus_auth` / `/etc/init.d/fast_recovery` (开机启动)
 - 认证日志: `/tmp/campus_network.log`
 - DNS 修复脚本: `/etc/campus_network/dns_fix.sh`（一键修复校园内部网站访问）
+- 广告拦截: LuCI → Services → Adblock（185K 域名，dnsmasq 后端，全设备生效）
 - 凭据文件: `credentials.txt`（本地，勿上传）
+- 概念参考: 教程"基础知识速成" + 开发日志 Phase 0（所有术语内联解释）
 
 ## DNS 说明
 校园网 DHCP 提供两个 DNS 服务器，各有问题：

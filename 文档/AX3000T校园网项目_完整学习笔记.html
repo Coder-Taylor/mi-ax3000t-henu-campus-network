@@ -194,7 +194,8 @@
 <hr />
 <h2 id="_1">目录</h2>
 <ol>
-<li><a href="#phase0">前置知识：你需要理解的 5 个核心概念</a></li>
+<li><a href="#step0">步骤0：刷机全过程——从原厂固件到 ImmortalWrt</a></li>
+<li><a href="#phase0">Phase 0：前置知识——核心概念详解</a></li>
 <li><a href="#phase1">Phase 1：路由器现状勘查</a></li>
 <li><a href="#phase2">Phase 2：安全加固</a></li>
 <li><a href="#phase3">Phase 3：WiFi WAN 配置</a></li>
@@ -203,9 +204,236 @@
 <li><a href="#pitfalls">踩坑记录 &amp; 故障排查技巧</a></li>
 </ol>
 <hr />
+<p><a name="step0"></a></p>
+<h2 id="0-immortalwrt">步骤0：刷机全过程——从原厂固件到 ImmortalWrt</h2>
+<blockquote>
+<p><strong>为什么从这里开始？</strong> 刷机是一切的前提。不刷机就没有 OpenWrt，没有 SSH 完全控制权，后面所有自动化都无从谈起。</p>
+<p>这一节记录从收到路由器盒子到刷好 ImmortalWrt 的完整过程。即使你买的是二手已刷好的路由器，了解这个过程也能帮你理解"路由器里到底发生了什么"。</p>
+</blockquote>
+<h3 id="01-ax3000t">0.1 开箱——你的 AX3000T 是什么</h3>
+<p>拿出路由器，先别急着插电。认识一下它的物理结构：</p>
+<div class="codehilite"><pre><span></span><code>AX3000T 背面接口：
+┌──────────────────────────────────────────┐
+│  Reset   WAN     LAN1    LAN2    LAN3    │  Power
+│  按钮    口      口      口      口       │  电源口
+│  (小孔)  (蓝色)                           │
+└──────────────────────────────────────────┘
+
+WAN 口：插网线接外网（校园网墙上的网口），是蓝色的
+LAN1-3：插网线接内网设备（电脑、打印机等）
+LAN4：也是 LAN 口，但刷机时用来连接电脑
+Reset：小孔，需要用牙签/卡针捅
+</code></pre></div>
+
+<blockquote>
+<p><strong>小白学</strong>：WAN 和 LAN 的物理区别只是路由器软件配置的不同。实际上 LAN1 口经常被 OpenWrt 重新分配为 WAN 口。刷机后默认 LAN IP 从 <code>192.168.31.1</code> 变成 <code>192.168.1.1</code>。</p>
+</blockquote>
+<p>出厂状态：<br />
+- 系统：小米原厂固件（基于旧版 OpenWrt，但锁死了 SSH）<br />
+- IP：<code>192.168.31.1</code>（小米默认）<br />
+- WiFi：有默认 SSID（在路由器底部贴纸上）<br />
+- 限制：不能 SSH、不能装软件、不能改底层配置</p>
+<h3 id="02">0.2 为什么要刷机？</h3>
+<p>小米原厂固件就像一个"带锁的笼子"——你能用的功能只有小米允许的那些。刷 OpenWrt 等于"拆掉笼子"：</p>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th style="text-align: center;">小米原厂</th>
+<th style="text-align: center;">刷 OpenWrt 后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SSH 远程登录</td>
+<td style="text-align: center;">❌ 锁死</td>
+<td style="text-align: center;">✅ 完全控制</td>
+</tr>
+<tr>
+<td>安装任意软件</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅ 几千个 opkg 包</td>
+</tr>
+<tr>
+<td>写脚本自动化</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅ Shell 脚本随便写</td>
+</tr>
+<tr>
+<td>WiFi 做客户端连校园网</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅ STA 模式</td>
+</tr>
+<tr>
+<td>自定义防火墙/NAT</td>
+<td style="text-align: center;">❌ 受限</td>
+<td style="text-align: center;">✅ nftables 完全可控</td>
+</tr>
+<tr>
+<td>可用存储空间</td>
+<td style="text-align: center;">~10MB</td>
+<td style="text-align: center;">78MB（大分区版）</td>
+</tr>
+<tr>
+<td>小米后台控制</td>
+<td style="text-align: center;">✅ 有</td>
+<td style="text-align: center;">❌ 完全去除</td>
+</tr>
+</tbody>
+</table>
+<h3 id="03-sshxmir-patcher">0.3 解锁 SSH（XMiR-Patcher）</h3>
+<p>刷机的前提是获得 SSH 访问权限。我们使用开源工具 <strong>XMiR-Patcher</strong>（位于 <code>小米AX3000T刷机教程openwrt大分区版/step1解锁ssh/xmir-patcher-main/</code>）。</p>
+<blockquote>
+<p><strong>XMiR-Patcher 是什么？</strong> 一个 Python 工具，利用小米固件的漏洞来解锁 SSH、备份分区、刷入新 U-Boot。它是 openwrt-xiaomi 社区维护的开源项目。</p>
+</blockquote>
+<p><strong>物理连接</strong>：</p>
+<div class="codehilite"><pre><span></span><code>电脑网口 ──── 网线 ──── 路由器 LAN4 口
+                            │
+                        路由器通电
+                            │
+                        等 2 分钟启动完成
+                            │
+                        电脑浏览器打开 miwifi.com 或 192.168.31.1
+                        确认能看到小米设置页面
+</code></pre></div>
+
+<p><strong>操作步骤</strong>：<br />
+1. 双击 <code>!START.bat</code> 打开工具菜单<br />
+2. 菜单选项依次执行：<br />
+   - <code>[1] Connect to router</code> — 连接路由器<br />
+   - <code>[2] Read router info</code> — 读取设备信息<br />
+   - <code>[3] Create backup</code> — <strong>⚠️ 备份分区（极其重要！）</strong><br />
+   - <code>[4] Unlock SSH</code> — 启用 SSH<br />
+   - <code>[5] Install uboot</code> — 刷入新 U-Boot（大分区版）<br />
+   - <code>[6] Set env variables</code> — 设置启动变量</p>
+<blockquote>
+<p><strong>⚠️ 为什么要备份？</strong> 第 3 步会把 Factory 分区（WiFi 校准数据）等关键分区备份到 <code>backups/</code> 目录。这些数据每台路由器独一无二，丢了 WiFi 信号就废了且无法恢复。<strong>请把 backup 文件夹复制到网盘/U盘保存。</strong></p>
+</blockquote>
+<p>这些操作背后发生了什么：<br />
+- <code>[4] Unlock SSH</code>：修改小米的启动脚本，在系统启动时自动开启 dropbear SSH 服务<br />
+- <code>[5] Install uboot</code>：把小米原厂 U-Boot 替换成大分区版 U-Boot（支持 78MB overlay）<br />
+- <code>[6] Set env variables</code>：设置 U-Boot 环境变量，让它从新的大分区启动</p>
+<blockquote>
+<p><strong>小白学——U-Boot 是什么？</strong> U-Boot 是路由器的"引导加载程序"（Bootloader），相当于电脑的 GRUB/BIOS。它在 Linux 内核启动之前运行，负责加载内核。大分区版 U-Boot 重新划分了 Flash 空间，给了 overlay 78MB 而不是原厂的 ~10MB。</p>
+</blockquote>
+<h3 id="04">0.4 备份了什么？</h3>
+<p>执行备份后，<code>backups/</code> 目录下会生成以下文件：</p>
+<table>
+<thead>
+<tr>
+<th>文件名</th>
+<th>是什么</th>
+<th style="text-align: center;">重要性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mtd0_FULL_DUMP.bin</code></td>
+<td>完整闪存镜像</td>
+<td style="text-align: center;">⭐⭐⭐</td>
+</tr>
+<tr>
+<td><code>mtd1_BL2.bin</code></td>
+<td>芯片启动代码</td>
+<td style="text-align: center;">⭐⭐</td>
+</tr>
+<tr>
+<td><code>mtd3_Bdata.bin</code></td>
+<td>系统变量（序列号等）</td>
+<td style="text-align: center;">⭐⭐</td>
+</tr>
+<tr>
+<td><code>mtd4_Factory.bin</code></td>
+<td><strong>WiFi 校准数据</strong></td>
+<td style="text-align: center;">⭐⭐⭐ <strong>最重要！</strong></td>
+</tr>
+<tr>
+<td><code>mtd5_FIP.bin</code></td>
+<td>U-Boot + ATF</td>
+<td style="text-align: center;">⭐⭐</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Factory 分区为什么这么重要？</strong> 它存储了每台路由器在工厂校准的 WiFi 参数——发射功率、频率偏移、天线匹配值。这些值每台不一样，没有通用替代。丢了 = WiFi 信号质量永久下降。</p>
+</blockquote>
+<h3 id="05-immortalwrt">0.5 刷入 ImmortalWrt 固件</h3>
+<p>固件文件：<code>小米AX3000T刷机教程openwrt大分区版/step2刷入openwrt/immortalwrt-24.10.5-...-sysupgrade.bin</code></p>
+<p><strong>方法 A：通过 XMiR-Patcher 菜单</strong>（推荐新手）<br />
+- 工具菜单中有 "Install firmware" 选项，按提示选择固件文件即可</p>
+<p><strong>方法 B：通过 SCP + SSH 手动刷</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 在电脑上（Windows 命令行/Git Bash）</span>
+<span class="c1"># 1. 把固件传到路由器</span>
+scp<span class="w"> </span><span class="s2">&quot;step2刷入openwrt/immortalwrt-24.10.5-...-sysupgrade.bin&quot;</span><span class="w"> </span>root@192.168.31.1:/tmp/
+
+<span class="c1"># 2. SSH 进路由器</span>
+ssh<span class="w"> </span>root@192.168.31.1
+
+<span class="c1"># 3. 刷入固件</span>
+sysupgrade<span class="w"> </span>-n<span class="w"> </span>-v<span class="w"> </span>/tmp/immortalwrt-24.10.5-*-sysupgrade.bin
+</code></pre></div>
+
+<p>参数说明：<br />
+- <code>-n</code>：不保留原配置（全新安装，推荐）<br />
+- <code>-v</code>：详细输出（能看到进度）</p>
+<p><strong>刷机过程中</strong>：<br />
+- 路由器自动重启，指示灯会闪烁<br />
+- 整个过程约 3-5 分钟<br />
+- <strong>⚠️ 千万不要断电！</strong> 断电只影响正在写入的分区（mtd8/9），不会损坏 BL2/FIP，但需要重刷</p>
+<h3 id="06">0.6 刷机后验证</h3>
+<p>等路由器完全启动（指示灯稳定常亮），验证刷机成功：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 浏览器访问 http://192.168.1.1（注意：不是 31.1 了！）</span>
+<span class="c1">#    应该看到 LuCI (ImmortalWrt) 登录页</span>
+
+<span class="c1"># 2. SSH 连接</span>
+ssh<span class="w"> </span>root@192.168.1.1
+<span class="c1">#    密码为空，直接回车</span>
+
+<span class="c1"># 3. 检查系统版本</span>
+cat<span class="w"> </span>/etc/os-release
+<span class="c1"># 输出：NAME=&quot;ImmortalWrt&quot;, VERSION=&quot;24.10.5&quot;</span>
+
+<span class="c1"># 4. 确认 overlay 大小（大分区成功的标志）</span>
+df<span class="w"> </span>-h<span class="w"> </span>/overlay
+<span class="c1"># 输出：Size: ~58M（如果只有 10M 说明没刷成大分区）</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>刷机后默认状态</strong>：root 无密码、WiFi 无加密、WAN 口默认 DHCP。这是一个"毛坯房"——能用但不安全。接下来 Phase 1-5 就是"装修"过程。</p>
+</blockquote>
+<hr />
 <p><a name="phase0"></a></p>
-<h2 id="phase-05">Phase 0：前置知识——5 个核心概念</h2>
-<p>在理解我们做了什么之前，先建立这 5 个概念。它们贯穿了整个项目。</p>
+<h2 id="phase-0">Phase 0：前置知识——核心概念详解</h2>
+<blockquote>
+<p><strong>怎么读这一章</strong>：这不是"先背下来再往下看"，而是"遇到了回来查"。每个概念标注了难度（⭐ = 必读基础，⭐⭐ = 理解了更好，⭐⭐⭐ = 遇到问题时再查）。</p>
+<p>如果你在后面的 Phase 中看到不理解的术语，Ctrl+F 回到这里。</p>
+</blockquote>
+<p>在理解我们做了什么之前，先建立这些核心概念。它们贯穿了整个项目。</p>
+<hr />
+<h3 id="0wan-lan-wlan">概念 0：WAN / LAN / WLAN——三个容易混淆的词 ⭐</h3>
+<p>这是最基础但最容易搞混的三个词：</p>
+<div class="codehilite"><pre><span></span><code>WAN (Wide Area Network)    = 广域网 = &quot;外面&quot;
+LAN (Local Area Network)   = 局域网 = &quot;家里&quot;
+WLAN (Wireless LAN)        = 无线局域网 = &quot;WiFi&quot;
+
+         WAN 侧                            LAN 侧
+    ┌──────────────┐                 ┌──────────────┐
+    │ 校园网/互联网  │                 │ 宿舍设备      │
+    │ 10.36.0.0/15  │──── 路由器 ────│ 192.168.1.0/24│
+    │               │  10.36.82.65   │              │
+    └──────────────┘                 └──────────────┘
+     路由器的&quot;外网口&quot;                  路由器的&quot;内网口&quot;
+</code></pre></div>
+
+<p><strong>生活比喻</strong>：<br />
+- <strong>WAN</strong> = 你家大门外的街道<br />
+- <strong>LAN</strong> = 你家内部（客厅+卧室）<br />
+- <strong>路由器</strong> = 你的房子，门牌号是 WAN IP<br />
+- <strong>NAT</strong>（后面讲）= 你家只有一个门牌号，但里面住了好几个人</p>
+<p>在我们项目中的实际体现：<br />
+- 路由器的 WAN 口：<code>phy1-sta0</code>（5G WiFi 连接 henu-student），IP 是 <code>10.36.82.65</code><br />
+- 路由器的 LAN 口：<code>br-lan</code>（2.4G WiFi + 有线 LAN2-4），IP 是 <code>192.168.1.1</code><br />
+- 宿舍设备都在 LAN 侧，通过路由器 NAT 共享 WAN 出口</p>
 <hr />
 <h3 id="1ssh">概念 1：SSH——我们如何"进入"路由器</h3>
 <div class="codehilite"><pre><span></span><code>你的电脑（Windows）                          路由器（Linux）
@@ -331,6 +559,104 @@ baidu.com 回复：
 <p>我们最后的状态：<br />
 - <strong>radio0 (2.4G)</strong>: AP 模式 → 发射 <code>可以和我在一起吗</code> 给宿舍用<br />
 - <strong>radio1 (5G)</strong>: STA 模式 → 连接 <code>henu-student</code> 作为上网出口</p>
+<h3 id="6watchdog">概念 6：看门狗（Watchdog）——"心跳监测器" ⭐⭐</h3>
+<p><strong>定义</strong>：看门狗是一种自动监控+恢复机制——定期检查"系统是否正常"，不正常就自动修复。</p>
+<p><strong>名字来源</strong>：硬件看门狗是一个倒计时定时器：</p>
+<div class="codehilite"><pre><span></span><code>定时器: 60 → 59 → 58 → ... → 3 → 2 → 1 → 💀 系统重启！
+                ↑
+         软件定期&quot;喂狗&quot;（重置定时器）
+         如果软件卡死没喂 → 定时器归零 → 硬件复位
+</code></pre></div>
+
+<p><strong>软件看门狗</strong>（本项目用法）：</p>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="nv">true</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>默认路由还在:
+<span class="w">        </span><span class="nv">sleep</span>,<span class="w"> </span><span class="k">continue</span><span class="w">        </span>#<span class="w"> </span>正常
+<span class="w">    </span><span class="k">else</span>:
+<span class="w">        </span>紧急恢复！<span class="w">              </span>#<span class="w"> </span>异常<span class="w"> </span>→<span class="w"> </span>自动修复
+</code></pre></div>
+
+<p>软件看门狗不重启系统，而是<strong>自动修复问题</strong>——恢复路由、重连 WiFi、触发认证。</p>
+<p><strong>本项目中的看门狗演进</strong>：<br />
+- v1 (Phase 7)：cron 看门狗，每 20 秒检查一次。缺点：20 秒才响应，太慢。<br />
+- v2 (Phase 10)：守护进程，每秒检查一次。优点：1 秒响应，6 倍提升。</p>
+<hr />
+<h3 id="7daemon">概念 7：守护进程（Daemon）——"后台默默工作的程序" ⭐</h3>
+<p><strong>定义</strong>：守护进程是一种在后台持续运行的程序，不和用户直接交互。</p>
+<p><strong>特点</strong>：<br />
+- 开机自动启动（通过 <code>/etc/init.d/</code> 脚本）<br />
+- 无限循环运行（<code>while true</code> 或事件驱动）<br />
+- 做监控/服务类的工作<br />
+- 名字源于希腊神话的"守护神"（daemon）——默默守护</p>
+<p><strong>本项目的守护进程</strong>（<code>fast_recovery_daemon.sh</code>）：</p>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>ping<span class="w"> </span><span class="m">8</span>.8.8.8<span class="w"> </span>通了:
+<span class="w">        </span>sleep<span class="w"> </span><span class="m">1</span><span class="w">           </span><span class="c1"># 网络正常，继续监控</span>
+<span class="w">    </span><span class="k">else</span>:
+<span class="w">        </span>诊断<span class="w"> </span>→<span class="w"> </span>分层恢复<span class="w">    </span><span class="c1"># 根据断网原因选择最快恢复方式</span>
+<span class="w">    </span>sleep<span class="w"> </span><span class="m">1</span>
+<span class="k">done</span>
+</code></pre></div>
+
+<p><strong>守护进程 vs cron 定时任务</strong>：<br />
+| 特性 | cron | 守护进程 |<br />
+|------|------|---------|<br />
+| 运行方式 | 到时间才执行 | 持续运行 |<br />
+| 最小间隔 | 1 分钟 | 1 秒 |<br />
+| CPU 占用 | 几乎为 0 | 极小（每秒一次 ping） |<br />
+| 适用场景 | 定期任务（日志清理、认证检测） | 快速响应（断网恢复） |</p>
+<hr />
+<h3 id="8">概念 8：路由器的文件系统——什么目录放什么 ⭐⭐</h3>
+<blockquote>
+<p>看懂这个，后面的 <code>/etc/config/</code>、<code>/tmp/</code>、<code>/etc/init.d/</code> 你就知道是什么了。</p>
+</blockquote>
+<div class="codehilite"><pre><span></span><code><span class="err">路由器文件系统</span><span class="w"> </span><span class="p">(</span><span class="n">OpenWrt</span><span class="p">)</span>
+<span class="o">/</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="w">                         </span><span class="err">←</span><span class="w"> </span><span class="err">所有配置文件的</span><span class="s">&quot;家&quot;</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="n">UCI</span><span class="w"> </span><span class="err">配置（最常操作的目录）</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">network</span><span class="w">               </span><span class="err">←</span><span class="w"> </span><span class="err">网络接口、</span><span class="n">IP</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">wireless</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="err">设置</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">firewall</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="err">防火墙规则</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="n">dhcp</span><span class="w">                  </span><span class="err">←</span><span class="w"> </span><span class="n">DNS</span><span class="o">/</span><span class="n">DHCP</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="p">.</span><span class="n">d</span><span class="o">/</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="err">开机启动脚本</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">network</span><span class="w">               </span><span class="err">←</span><span class="w"> </span><span class="err">网络服务</span><span class="w"> </span><span class="p">(</span><span class="n">START</span><span class="o">=</span><span class="mh">20</span><span class="p">)</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">firewall</span><span class="w">              </span><span class="err">←</span><span class="w"> </span><span class="err">防火墙</span><span class="w"> </span><span class="p">(</span><span class="n">START</span><span class="o">=</span><span class="mh">30</span><span class="p">)</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">dnsmasq</span><span class="w">               </span><span class="err">←</span><span class="w"> </span><span class="n">DHCP</span><span class="o">/</span><span class="n">DNS</span><span class="w"> </span><span class="p">(</span><span class="n">START</span><span class="o">=</span><span class="mh">60</span><span class="p">)</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">cron</span><span class="w">                  </span><span class="err">←</span><span class="w"> </span><span class="err">定时任务</span><span class="w"> </span><span class="p">(</span><span class="n">START</span><span class="o">=</span><span class="mh">50</span><span class="p">)</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">campus_auth</span><span class="w">           </span><span class="err">←</span><span class="w"> </span><span class="err">我们的认证启动</span><span class="w"> </span><span class="p">(</span><span class="n">START</span><span class="o">=</span><span class="mh">99</span><span class="p">)</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="n">fast_recovery</span><span class="w">         </span><span class="err">←</span><span class="w"> </span><span class="err">我们的守护进程</span><span class="w"> </span><span class="p">(</span><span class="n">START</span><span class="o">=</span><span class="mh">98</span><span class="p">)</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">crontabs</span><span class="o">/</span><span class="w">            </span><span class="err">←</span><span class="w"> </span><span class="n">cron</span><span class="w"> </span><span class="err">定时任务表</span>
+<span class="err">│</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="n">root</span><span class="w">                  </span><span class="err">←</span><span class="w"> </span><span class="n">root</span><span class="w"> </span><span class="err">用户的</span><span class="w"> </span><span class="n">cron</span><span class="w"> </span><span class="err">表</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">dropbear</span><span class="o">/</span><span class="w">            </span><span class="err">←</span><span class="w"> </span><span class="n">SSH</span><span class="w"> </span><span class="err">服务器</span>
+<span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">dnsmasq</span><span class="p">.</span><span class="n">conf</span><span class="w">         </span><span class="err">←</span><span class="w"> </span><span class="n">dnsmasq</span><span class="w"> </span><span class="err">额外配置</span>
+<span class="err">│</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="w">          </span><span class="err">←</span><span class="w"> </span><span class="err">我们的脚本（自己创建的）</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span><span class="w">             </span><span class="err">←</span><span class="w"> </span><span class="err">认证脚本</span><span class="w"> </span><span class="n">v2</span><span class="mf">.0</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">fast_recovery_daemon</span><span class="p">.</span><span class="n">sh</span><span class="w">   </span><span class="err">←</span><span class="w"> </span><span class="err">守护进程</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">route_watchdog</span><span class="p">.</span><span class="n">sh</span><span class="w">         </span><span class="err">←</span><span class="w"> </span><span class="err">旧看门狗（已被替代）</span>
+<span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="n">dns_fix</span><span class="p">.</span><span class="n">sh</span><span class="w">                </span><span class="err">←</span><span class="w"> </span><span class="n">DNS</span><span class="w"> </span><span class="err">修复</span>
+<span class="err">│</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="w">                         </span><span class="err">←</span><span class="w"> </span><span class="err">临时文件（⚠️</span><span class="w"> </span><span class="err">重启清空！）</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">campus_network</span><span class="p">.</span><span class="n">log</span><span class="w">        </span><span class="err">←</span><span class="w"> </span><span class="err">认证日志（想看最新日志来这里）</span>
+<span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="n">run</span><span class="o">/</span><span class="w">                      </span><span class="err">←</span><span class="w"> </span><span class="err">运行时数据（</span><span class="n">PID</span><span class="w"> </span><span class="err">文件等）</span>
+<span class="err">│</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">rom</span><span class="o">/</span><span class="w">                         </span><span class="err">←</span><span class="w"> </span><span class="err">出厂固件（只读，不要改）</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">overlay</span><span class="o">/</span><span class="n">upper</span><span class="o">/</span><span class="w">               </span><span class="err">←</span><span class="w"> </span><span class="err">你的修改的实际存储位置</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="w">                     </span><span class="err">←</span><span class="w"> </span><span class="err">可执行程序</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">www</span><span class="o">/</span><span class="w">                         </span><span class="err">←</span><span class="w"> </span><span class="n">LuCI</span><span class="w"> </span><span class="n">Web</span><span class="w"> </span><span class="err">界面文件</span>
+<span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="w">                        </span><span class="err">←</span><span class="w"> </span><span class="err">虚拟文件系统（内核实时生成）</span>
+<span class="err">│</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">mtd</span><span class="w">                 </span><span class="err">←</span><span class="w"> </span><span class="err">闪存分区信息</span>
+<span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">net</span><span class="o">/</span><span class="n">nf_conntrack</span><span class="w">    </span><span class="err">←</span><span class="w"> </span><span class="n">NAT</span><span class="w"> </span><span class="err">连接跟踪表</span>
+<span class="err">└──</span><span class="w"> </span><span class="o">/</span><span class="n">sys</span><span class="o">/</span><span class="n">class</span><span class="o">/</span><span class="n">net</span><span class="o">/</span><span class="w">               </span><span class="err">←</span><span class="w"> </span><span class="err">网络接口信息</span>
+</code></pre></div>
+
+<p><strong>常见文件后缀</strong>：<br />
+| 后缀 | 是什么 | 例子 |<br />
+|------|--------|------|<br />
+| <code>.sh</code> | Shell 脚本（可执行） | <code>auto_login.sh</code> |<br />
+| 无后缀 | UCI 配置（/etc/config/ 下） | <code>network</code>, <code>wireless</code> |<br />
+| <code>.conf</code> | 传统配置文件 | <code>dnsmasq.conf</code> |<br />
+| <code>.ipk</code> | OpenWrt 软件包 | <code>luci-app-adblock_*.ipk</code> |</p>
 <hr />
 <p><a name="phase1"></a></p>
 <h2 id="phase-12026-06-04">Phase 1：路由器现状勘查（2026-06-04）</h2>
@@ -450,18 +776,18 @@ cat<span class="w"> </span>/etc/config/firewall<span class="w">   </span><span c
 <p>设置 root 密码、SSH 免密登录、WiFi 加密。</p>
 <h3 id="21-root-busybox">2.1 设置 root 密码——第一课：busybox 的坑</h3>
 <p><strong>第一次尝试</strong>（在我们的电脑上执行）：</p>
-<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>root@192.168.1.1<span class="w"> </span><span class="s2">&quot;echo -e &#39;Czj20070312#\nCzj20070312#&#39; | passwd root&quot;</span>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>root@192.168.1.1<span class="w"> </span><span class="s2">&quot;echo -e &#39;MyPass123#\nMyPass123#&#39; | passwd root&quot;</span>
 </code></pre></div>
 
 <p><code>passwd</code> 报告成功，但后来发现无法用新密码登录。</p>
 <blockquote>
 <p><strong>坑点分析</strong>：问题的根源在于 <strong>OpenWrt 使用 busybox</strong>。</p>
 <p><strong>什么是 busybox？</strong> 嵌入式 Linux 不用标准 GNU 工具（太大），而是用一个叫 busybox 的精简替代品。busybox 把所有常用命令（<code>ls</code>、<code>cat</code>、<code>echo</code>、<code>sh</code> 等）打包成一个程序。</p>
-<p><strong>busybox 的 <code>echo</code> 不支持 <code>-e</code></strong>！当你写 <code>echo -e 'xxx\nxxx'</code>，busybox 原样输出 <code>-e xxx\nxxx</code>，<code>\n</code> 没有被翻译成换行。这导致 <code>passwd</code> 把 <code>-e Czj20070312#\nCzj20070312#</code> 当成了密码（一整行，包含 <code>\n</code> 字面字符）。</p>
+<p><strong>busybox 的 <code>echo</code> 不支持 <code>-e</code></strong>！当你写 <code>echo -e 'xxx\nxxx'</code>，busybox 原样输出 <code>-e xxx\nxxx</code>，<code>\n</code> 没有被翻译成换行。这导致 <code>passwd</code> 把形如 <code>-e 你的密码\n你的密码</code> 的整行（包含 <code>\n</code> 字面字符）当成了密码。</p>
 <p><strong>教训</strong>：嵌入式环境用 <code>printf</code> 代替 <code>echo -e</code>，因为 <code>printf</code> 的行为是标准化的。</p>
 </blockquote>
 <p><strong>正确做法</strong>（第二次）：</p>
-<div class="codehilite"><pre><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Czj20070312#\nCzj20070312#\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>passwd<span class="w"> </span>root
+<div class="codehilite"><pre><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;你的密码\n你的密码\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>passwd<span class="w"> </span>root
 </code></pre></div>
 
 <p><code>printf</code> 的 <code>\n</code> 行为在所有 shell 中都是一致的。</p>
@@ -709,10 +1035,10 @@ ping 8.8.8.8       ❌ (外网不可达——还没 Portal 认证)
 <span class="c1"># ↑ shebang——告诉系统用哪个解释器执行这个脚本</span>
 
 <span class="c1"># 配置变量（改这里就能适配不同账号）</span>
-<span class="nv">USERNAME</span><span class="o">=</span><span class="s2">&quot;2510250328&quot;</span>
-<span class="nv">PASSWORD</span><span class="o">=</span><span class="s2">&quot;386095&quot;</span>
+<span class="nv">USERNAME</span><span class="o">=</span><span class="s2">&quot;你的学号&quot;</span>
+<span class="nv">PASSWORD</span><span class="o">=</span><span class="s2">&quot;校园网密码&quot;</span>
 <span class="nv">OPERATOR_SUFFIX</span><span class="o">=</span><span class="s2">&quot;@henuyd&quot;</span><span class="w">    </span><span class="c1"># 运营商后缀（henuyd=移动）</span>
-<span class="nv">CAMPUS_CODE</span><span class="o">=</span><span class="s2">&quot;07cdfd23373b17c6b337251c22b7ea57&quot;</span>
+<span class="nv">CAMPUS_CODE</span><span class="o">=</span><span class="s2">&quot;你的校编码&quot;</span>
 
 <span class="c1"># 日志函数——所有输出带时间戳写入日志文件</span>
 log<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -733,7 +1059,7 @@ check_network<span class="o">()</span><span class="w"> </span><span class="o">{<
 - <code>ping -c 2 -W 3</code>：<code>-c 2</code> 发 2 个包，<code>-W 3</code> 超时 3 秒。</p>
 </blockquote>
 <h3 id="45">4.5 测试结果</h3>
-<div class="codehilite"><pre><span></span><code><span class="nl">第一步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="mi">1</span><span class="p">,</span><span class="ss">&quot;msg&quot;</span><span class="err">:</span><span class="ss">&quot;发起登录&quot;</span><span class="p">,</span><span class="ss">&quot;data&quot;</span><span class="err">:</span><span class="ss">&quot;2510250328@henuyd&quot;</span><span class="err">}</span>
+<div class="codehilite"><pre><span></span><code><span class="nl">第一步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="mi">1</span><span class="p">,</span><span class="ss">&quot;msg&quot;</span><span class="err">:</span><span class="ss">&quot;发起登录&quot;</span><span class="p">,</span><span class="ss">&quot;data&quot;</span><span class="err">:</span><span class="ss">&quot;你的学号@henuyd&quot;</span><span class="err">}</span>
 <span class="nl">第二步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="mi">1</span><span class="p">,</span><span class="ss">&quot;msg&quot;</span><span class="err">:</span><span class="ss">&quot;SUCCESS&quot;</span><span class="p">,</span><span class="ss">&quot;data&quot;</span><span class="err">:</span><span class="k">null</span><span class="err">}</span>
 <span class="nl">第三步响应</span><span class="p">:</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;code&quot;</span><span class="err">:</span><span class="ss">&quot;0&quot;</span><span class="p">,</span><span class="ss">&quot;rec&quot;</span><span class="err">:</span><span class="k">null</span><span class="p">,</span><span class="ss">&quot;message&quot;</span><span class="err">:</span><span class="ss">&quot;认证成功&quot;</span><span class="p">...</span><span class="err">}</span>
 
@@ -757,6 +1083,54 @@ check_network<span class="o">()</span><span class="w"> </span><span class="o">{<
 - <strong>crontab 格式</strong>：<code>分 时 日 月 星期 命令</code>。<code>*/5 * * * *</code> 表示"每 5 分钟执行一次"（在所有小时、所有日期、所有月份、所有星期）。<br />
 - OpenWrt 的 crontab 文件在 <code>/etc/crontabs/root</code>（root 用户的 cron 表）。<br />
 - 脚本第一步就是 <code>check_network</code>，如果 ping 8.8.8.8 通了就直接退出（防止频繁认证），不通才走完整认证流程。这样设计很优雅。</p>
+</blockquote>
+<p><strong>为什么是 5 分钟？——不同断网原因需要不同策略</strong></p>
+<p>网络不通有三种不同原因，恢复方式完全不同：</p>
+<table>
+<thead>
+<tr>
+<th>断网原因</th>
+<th>表现</th>
+<th>正确处理</th>
+<th style="text-align: center;">参考耗时</th>
+<th>检测策略</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DHCP 租约丢失</td>
+<td>WiFi 连着，但路由没了</td>
+<td>DHCP 续租</td>
+<td style="text-align: center;">2-3秒</td>
+<td>守护进程 1秒检测</td>
+</tr>
+<tr>
+<td>WiFi STA 掉线</td>
+<td>phy1-sta0 断开</td>
+<td>iw connect 直连</td>
+<td style="text-align: center;">3-5秒</td>
+<td>守护进程 1秒检测</td>
+</tr>
+<tr>
+<td>Portal 认证过期</td>
+<td>WiFi+路由都在，外网不通</td>
+<td>重新走三步认证</td>
+<td style="text-align: center;">10-15秒</td>
+<td>cron 5分钟兜底</td>
+</tr>
+</tbody>
+</table>
+<p><strong>策略分层</strong>：<br />
+- <strong>守护进程</strong>（<code>fast_recovery_daemon</code>）：每秒检测路由/WiFi，秒级恢复路由层面问题<br />
+  - 路由丢失 → DHCP 续租（2-3秒）<br />
+  - STA 断开 → iw connect 直连（3-5秒）<br />
+  - 认证过期 → 触发认证脚本（但冷却 60 秒，防频繁重试）<br />
+- <strong>Cron 定时任务</strong>（每 5 分钟）：兜底认证过期检测<br />
+  - Portal 有效期通常数小时，5 分钟检测一次完全够用<br />
+  - 之前从 1 分钟 → 3 分钟 → 现在 5 分钟，是因为守护进程已经处理了路由层面（秒级），cron 只需兜底认证（分钟级）<br />
+  - 过于频繁（1 分钟）对认证服务器构成不必要的压力</p>
+<blockquote>
+<p><strong>设计原则</strong>：保证网络和路由器的前提下，不需要太激进的检测频率。5 分钟对于数小时有效期的 Portal 认证来说绰绰有余。</p>
 </blockquote>
 <h3 id="52-nat-firewall4-fullcone">5.2 NAT 修复——firewall4 的 fullcone 问题</h3>
 <p><strong>症状</strong>：路由器自己能上网，但连在 WiFi 上的手机显示"无互联网"。</p>
@@ -1489,10 +1863,13 @@ opkg<span class="w"> </span>install<span class="w"> </span>luci-app-openvpn<span
 <hr />
 <hr />
 <p><a name="phase7"></a></p>
-<h2 id="phase-72026-06-06">Phase 7：旧设备连接导致断网问题排查与修复（2026-06-06）</h2>
+<h2 id="phase-72026-06-06">Phase 7：设备重连导致断网问题排查与修复（2026-06-06）</h2>
 <h3 id="_17">问题描述</h3>
-<p><strong>症状</strong>：有旧设备连接到路由器 WiFi 时，路由器似乎会断网，导致所有设备都无法上网。</p>
-<p>用户报告当旧手机/旧笔记本连上宿舍 WiFi 后，网络会短暂中断，过一会儿自动恢复。如果不恢复，需要手动重启或等 cron 触发重连。</p>
+<p><strong>症状</strong>：当之前连接过的设备（如 Honor 400 手机）重新连接到路由器 WiFi 时，路由器似乎会断网，导致所有设备都无法上网。</p>
+<p>用户报告当之前连过的手机/笔记本重新连上宿舍 WiFi 后，网络会短暂中断，过一会儿自动恢复。如果不恢复，需要手动重启或等 cron 触发重连。</p>
+<blockquote>
+<p><strong>注</strong>：这里的"之前连接过的设备"（下文简称"重连设备"）不是指"老旧设备"——用户的 Honor 400 是较新款手机。问题是设备在离开 WiFi 范围后重新回来连接时触发的，与设备新旧无关。</p>
+</blockquote>
 <h3 id="71">7.1 诊断过程</h3>
 <h4 id="ssh">第一步：直接 SSH 到路由器排查</h4>
 <div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>ax3000t
@@ -1553,17 +1930,17 @@ opkg<span class="w"> </span>install<span class="w"> </span>luci-app-openvpn<span
 <blockquote>
 <p><strong>小白学</strong>：整个过程可能只持续 0.5-2 秒，但 TCP 连接（HTTP、游戏、视频通话）对这种瞬时中断非常敏感。连接一断就需要重新建立，用户感知就是"网断了"。</p>
 </blockquote>
-<h4 id="_19">第四步：为什么"旧设备"更容易触发？</h4>
+<h4 id="_19">第四步：为什么重连设备更容易触发？</h4>
 <table>
 <thead>
 <tr>
-<th>旧设备特征</th>
+<th>重连设备特征</th>
 <th>导致的问题</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>仅支持 802.11n (WiFi 4) 或更老</td>
+<td>仅支持 802.11n (WiFi 4) 或单天线</td>
 <td>关联帧交换更多，WPA 握手更慢</td>
 </tr>
 <tr>
@@ -1571,7 +1948,7 @@ opkg<span class="w"> </span>install<span class="w"> </span>luci-app-openvpn<span
 <td>芯片无法高效时分复用</td>
 </tr>
 <tr>
-<td>慢速 CPU 处理关联</td>
+<td>较慢速的 WiFi 芯片处理关联</td>
 <td>整个关联过程耗时更长（200-500ms vs 50ms）</td>
 </tr>
 <tr>
@@ -1584,7 +1961,10 @@ opkg<span class="w"> </span>install<span class="w"> </span>luci-app-openvpn<span
 </tr>
 </tbody>
 </table>
-<p>现代 WiFi 6 设备关联只需 ~50ms，不足以触发路由丢失。但旧设备可能需要 200-500ms，这个时间窗口足够让 STA 侧断连。</p>
+<p>现代 WiFi 6 设备关联只需 ~50ms，不足以触发路由丢失。但部分设备（如单天线手机）的关联过程可能需要 200-500ms，这个时间窗口足够让同芯片上的 STA 侧断连。</p>
+<blockquote>
+<p><strong>说明</strong>：Honor 400 是用户的正常使用设备，OPPO Reno 14 Pro 因单天线（1×1）+ long preamble 导致关联耗时较长。这不是"旧"的问题——是不同设备的 WiFi 硬件实现差异导致的。</p>
+</blockquote>
 <h3 id="72">7.2 根因总结</h3>
 <table>
 <thead>
@@ -1604,9 +1984,9 @@ opkg<span class="w"> </span>install<span class="w"> </span>luci-app-openvpn<span
 </tr>
 <tr>
 <td>🥈</td>
-<td><strong>旧设备关联耗时长触发芯片切换</strong></td>
+<td><strong>重连设备关联耗时长触发芯片切换</strong></td>
 <td>高</td>
-<td>logread 显示每次新设备连接伴随 odhcpd 路由丢失</td>
+<td>logread 显示每次重连伴随 odhcpd 路由丢失</td>
 </tr>
 <tr>
 <td>🥉</td>
@@ -1840,15 +2220,15 @@ reboot
 </table>
 <hr />
 <p><a name="phase10"></a></p>
-<h2 id="phase-10-v22026-06-08">Phase 10：旧设备重连断网修复 v2——快速恢复守护进程（2026-06-08）</h2>
+<h2 id="phase-10-v22026-06-08">Phase 10：设备重连断网修复 v2——快速恢复守护进程（2026-06-08）</h2>
 <blockquote>
 <p><strong>背景</strong>：Phase 7 的修复（频宽对齐 + cron看门狗）缓解了问题，但未根治。<br />
-用户反馈：旧设备离开后又回来，挂机游戏仍然会长时间断网，提示"网络异常"。</p>
+用户反馈：之前连接过的设备（Honor 400）离开 WiFi 范围后又回来，挂机游戏仍然会长时间断网，提示"网络异常"。</p>
 </blockquote>
 <h3 id="100">10.0 问题复现与深度诊断</h3>
 <h4 id="_20">用户报告的症状</h4>
 <blockquote>
-<p>"每当我旧设备离开后又回来，我挂机的游戏又会直接断开，而且不是短暂的断开，而是一段比较长时间的断开导致他提示我网络异常"</p>
+<p>"每当我之前连过的设备离开后又回来，我挂机的游戏又会直接断开，而且不是短暂的断开，而是一段比较长时间的断开导致他提示我网络异常"</p>
 </blockquote>
 <p><strong>关键词</strong>：不是短暂断开、比较长时间、游戏提示网络异常。</p>
 <p>这说明恢复链路太慢——TCP 长连接（游戏、视频通话）对中断的容忍度通常只有 10-30 秒，超过就会触发"网络异常"弹窗。</p>
@@ -1876,7 +2256,7 @@ cat<span class="w"> </span>/tmp/campus_network.log
 <h3 id="101-v2">10.1 根因分析 v2：为什么断网时间这么长？</h3>
 <p>Phase 7 已经发现了"同芯片 STA+AP 互相干扰"的根因。但用户反馈问题仍然存在，说明<strong>恢复速度不够快</strong>。</p>
 <h4 id="_21">完整恢复链路的时间分解</h4>
-<div class="codehilite"><pre><span></span><code><span class="err">旧设备重连</span><span class="w"> </span><span class="mi">5</span><span class="n">G</span><span class="w"> </span><span class="n">AP</span>
+<div class="codehilite"><pre><span></span><code><span class="err">设备重连</span><span class="w"> </span><span class="mi">5</span><span class="n">G</span><span class="w"> </span><span class="n">AP</span><span class="err">（如</span><span class="w"> </span><span class="n">Honor</span><span class="w"> </span><span class="mi">400</span><span class="w"> </span><span class="err">回到宿舍）</span>
 <span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="err">驱动处理</span><span class="w"> </span><span class="n">WPA2</span><span class="w"> </span><span class="err">握手，挂起</span><span class="w"> </span><span class="n">STA</span><span class="w"> </span><span class="err">接口</span><span class="p">)</span>
 <span class="n">phy1</span><span class="o">-</span><span class="n">sta0</span><span class="w"> </span><span class="err">断开</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">默认路由丢失</span><span class="w">  </span>
 <span class="w">  </span><span class="err">↓</span><span class="w"> </span><span class="p">(</span><span class="err">等待</span><span class="w"> </span><span class="n">cron</span><span class="w"> </span><span class="err">看门狗触发</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="err">最长</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="err">秒！</span><span class="p">)</span><span class="w">      </span><span class="err">←</span><span class="w"> </span><span class="err">🔴</span><span class="w"> </span><span class="err">瓶颈</span><span class="mi">1</span>
@@ -2048,14 +2428,14 @@ iw<span class="w"> </span>dev<span class="w"> </span>phy1-sta0<span class="w"> <
 /etc/init.d/fast_recovery<span class="w"> </span>start
 </code></pre></div>
 
-<p>cron 只保留认证检测（每 3 分钟，不需要频繁）：</p>
-<div class="codehilite"><pre><span></span><code><span class="o">*/</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
+<p>cron 只保留认证检测（每 5 分钟，不需要频繁）：</p>
+<div class="codehilite"><pre><span></span><code><span class="o">*/</span><span class="mi">5</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
 <span class="nv">@reboot</span><span class="w"> </span><span class="n">sleep</span><span class="w"> </span><span class="mi">30</span><span class="p">;</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">campus_network</span><span class="o">/</span><span class="n">auto_login</span><span class="p">.</span><span class="n">sh</span>
 <span class="mi">0</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="w"> </span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">reboot</span>
 </code></pre></div>
 
 <blockquote>
-<p><strong>为什么还要保留 3 分钟的认证检测？</strong> 守护进程虽然快，但它的认证触发有 60 秒冷却。如果守护进程在这一分钟内连续遇到了需要认证的情况，冷却时间内不会重试。cron 的 3 分钟认证检测作为兜底，确保认证永远不会漏掉。</p>
+<p><strong>为什么还要保留 5 分钟的认证检测？</strong> 守护进程虽然快，但它的认证触发有 60 秒冷却。如果守护进程在这一分钟内连续遇到了需要认证的情况，冷却时间内不会重试。cron 的 5 分钟认证检测作为兜底，确保认证永远不会漏掉。5 分钟对于数小时有效期的 Portal 认证来说完全够用。</p>
 </blockquote>
 <h3 id="103">10.3 部署测试</h3>
 <h4 id="_23">部署过程</h4>
@@ -2134,7 +2514,7 @@ crontab<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span
 </tbody>
 </table>
 <h3 id="104">10.4 关键洞察</h3>
-<h4 id="_25">为什么"旧设备"更容易触发问题？</h4>
+<h4 id="_25">为什么重连设备更容易触发问题？</h4>
 <p>诊断时发现两台正常设备（LAPTOP-TAYLOR 和 Honor 400）和一台 OPPO Reno 14 Pro 的详细信息：</p>
 <table>
 <thead>
@@ -2171,8 +2551,8 @@ crontab<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span
 <p><strong>前导码（Preamble）是什么？</strong> WiFi 帧的最开头部分，用于接收端同步时钟和检测帧的起始位置。<strong>Short preamble</strong> 只有 96 微秒（72 bits），<strong>Long preamble</strong> 需要 192 微秒（144 bits）。长期来看，long preamble 会让每个帧的开销多出一倍——在芯片需要频繁切换 STA/AP 模式的情况下，这些微秒级的开销累积起来就变成了毫秒级的延迟。</p>
 </blockquote>
 <p><strong>正常设备</strong>：关联耗时 50ms → STA 断连窗口窄 → 往往不出问题。<br />
-<strong>"旧设备"</strong>：关联耗时 200-500ms → STA 断连窗口宽 → <strong>几乎每次都会触发路由丢失</strong>。</p>
-<p>这就是为什么用户感觉"只有旧设备回来才断网"——不是因为"旧"，而是因为设备硬件差异导致了不同的关联耗时。</p>
+<strong>OPPO/部分单天线设备</strong>：关联耗时 200-500ms → STA 断连窗口宽 → <strong>几乎每次都会触发路由丢失</strong>。</p>
+<p>这就是为什么用户感觉"只有某些设备回来才断网"——不是因为设备"旧"，而是因为不同设备的 WiFi 硬件实现（天线数量、preamble 类型）差异导致了不同的关联耗时。Honor 400 作为用户日常使用的设备，在重新连接时同样可能触发这个问题。</p>
 <h4 id="vs">单天线 vs 双天线的实际影响</h4>
 <p>OPPO Reno 14 Pro 只有 1 根天线（NSS=1）：</p>
 <div class="codehilite"><pre><span></span><code><span class="mf">2</span><span class="err">×</span><span class="mf">2</span><span class="w"> </span><span class="n">设备理论最大速率</span><span class="p">:</span><span class="w"> </span><span class="mf">573.5</span><span class="w"> </span><span class="n">Mbps</span><span class="w"> </span><span class="p">(</span><span class="mf">40</span><span class="n">MHz</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="mf">6</span><span class="p">)</span>
@@ -2263,9 +2643,9 @@ crontab<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span
 </table>
 <hr />
 <blockquote>
-<p><strong>最后更新</strong>：2026-06-08 21:30<br />
-<strong>完成状态</strong>：🎉 Phase 0-10 全部完成<br />
-<strong>新增</strong>：Phase 10（旧设备重连断网修复 v2 + 快速恢复守护进程）</p>
+<p><strong>最后更新</strong>：2026-06-09<br />
+<strong>完成状态</strong>：🎉 步骤0 + Phase 0-10 + 步骤11 全部完成<br />
+<strong>新增</strong>：步骤0（刷机全过程）、Phase 0 概念扩展（文件系统/看门狗/守护进程）、WAN/LAN 区分、步骤11（广告拦截）</p>
 </blockquote>
 
 <div style="text-align:center;color:#94a3b8;font-size:0.85em;margin-top:3em;padding-top:1em;border-top:1px solid #e2e8f0;">
