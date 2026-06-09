@@ -27,6 +27,7 @@
 步骤9: ✅ 校园网内部网站 DNS 修复（henu.edu.cn → 114.114.114.114）
 步骤10: ✅ 设备重连断网修复 v2（快速恢复守护进程替代cron看门狗）
 步骤11: ✅ 广告拦截 adblock（DNS 层面，185,435 域名，全设备生效）
+步骤12: ✅ WireGuard VPN 客户端 + NTP 时间同步 + 流量监控(nlbwmon) + 网络质量监控(collectd)
 ```
 
 ## 当前运行状态
@@ -37,6 +38,10 @@
 - **信道**: 5GHz 已锁定 ch52（避免 ACS 触发 radio reset）
 - **守护进程**: fast_recovery_daemon 每秒检测，秒级恢复（替代 cron 20秒轮询）
 - **认证检测**: cron 每5分钟自动检测/重连（守护进程每秒检测路由，秒级恢复）
+- **VPN**: WireGuard wg0 → 10.66.66.2/24, Peer 47.94.146.53:51820, keepalive 25s
+- **NTP**: sysntpd → ntp.tencent.com + ntp1.aliyun.com + ntp.ntsc.ac.cn + cn.ntp.org.cn
+- **流量监控**: nlbwmon（30s刷新, 24h提交, LuCI Bandwidth Monitor）
+- **性能监控**: collectd + RRDtool（CPU/接口/负载/内存/WiFi/Ping, LuCI Statistics）
 
 ## 关键信息
 - 路由器: `192.168.1.1` / `ssh ax3000t`（免密）
@@ -50,6 +55,10 @@
 - 认证日志: `/tmp/campus_network.log`
 - DNS 修复脚本: `/etc/campus_network/dns_fix.sh`（一键修复校园内部网站访问）
 - 广告拦截: LuCI → Services → Adblock（185K 域名，dnsmasq 后端，全设备生效）
+- WireGuard 配置: `/etc/wireguard/`（私钥 + 公钥），UCI: `network.wg0`
+- WireGuard 管理: LuCI → Network → Interfaces → wg0 或 `wg show`
+- 流量监控: LuCI → Services → Bandwidth Monitor（nlbwmon，每设备/协议统计）
+- 性能图表: Statistics → Graphs（collectd，CPU/内存/流量/延迟/WiFi）
 - 凭据文件: `credentials.txt`（本地，勿上传）
 - 概念参考: 教程"基础知识速成" + 开发日志 Phase 0（所有术语内联解释）
 
@@ -86,6 +95,11 @@
 - 查看状态: `iw dev phy1-sta0 link`
 - 检查频宽: `iw dev phy1-ap0 info | grep width`
 - 查看5G信道是否锁定: `uci get wireless.radio1.channel`（应为52）
+- WireGuard 状态: `wg show` 或 `ip addr show wg0`
+- WireGuard 握手失败: 检查 `persistent_keepalive` 是否设置，ping 服务器
+- NTP 同步状态: `date` + `logread | grep ntp`
+- 流量监控为空: 检查 `list local_network 'lan'` 是否在 nlbwmon 配置中
+- collectd 图表: Statistics → Graphs（重启后历史丢失是正常的，/tmp 是内存盘）
 
 ## 文件导航
 

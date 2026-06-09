@@ -202,6 +202,7 @@
 <li><a href="#phase4">Phase 4：校园网认证脚本</a></li>
 <li><a href="#phase5">Phase 5：定时重连 &amp; NAT 修复</a></li>
 <li><a href="#pitfalls">踩坑记录 &amp; 故障排查技巧</a></li>
+<li><a href="#phase11">Phase 11：WireGuard VPN + NTP + 流量监控 + 网络质量监控</a></li>
 </ol>
 <hr />
 <p><a name="step0"></a></p>
@@ -2901,11 +2902,704 @@ crontab<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span
 </tr>
 </tbody>
 </table>
+<p><a name="phase11"></a></p>
+<h2 id="phase-11wireguard-vpn-ntp-2026-06-09">Phase 11：WireGuard VPN + NTP + 流量监控 + 网络质量监控（2026-06-09）</h2>
+<h3 id="_26">目标</h3>
+<p>在路由器已经稳定运行（校园网认证 + 快速恢复 + DNS修复 + 广告拦截）的基础上，添加四个锦上添花的功能：</p>
+<ol>
+<li><strong>WireGuard VPN 客户端</strong> — 让路由器接入远程 VPN 网络，宿舍设备无需安装客户端即可访问 VPN 资源</li>
+<li><strong>NTP 时间同步</strong> — 确保路由器时钟准确（对日志、证书、WireGuard 握手有时间精度要求）</li>
+<li><strong>流量监控 (nlbwmon)</strong> — 记录每个设备的流量用量（谁在用我的网？用了多少？）</li>
+<li><strong>网络质量监控 (collectd + RRDtool)</strong> — 长期记录 CPU、内存、网络延迟，Web 端可视化图表</li>
+</ol>
+<h3 id="110">11.0 前置知识</h3>
+<h4 id="wireguard">WireGuard 是什么？</h4>
+<p>WireGuard 是新一代 VPN 协议（2018 年合并入 Linux 内核）。和传统 VPN 的区别：</p>
+<div class="codehilite"><pre><span></span><code>传统 VPN (OpenVPN/IPSec):
+  用户态加密 → 内核态转发 → 用户态加密 → ...
+  大量系统调用，CPU 开销大
+
+WireGuard:
+  内核态加密 + 转发 (kernel module)
+  零拷贝，效率接近原生网卡
+</code></pre></div>
+
+<blockquote>
+<p><strong>关键数字</strong>：在 MT7981B (双核 A53 1.3GHz) 上，WireGuard 可跑 300-500 Mbps。校园网出口只有 100 Mbps，CPU 完全不是瓶颈。</p>
+</blockquote>
+<p>WireGuard 的核心概念：</p>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>说明</th>
+<th>类比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Interface</strong></td>
+<td>虚拟网卡，如 <code>wg0</code></td>
+<td>一个"隧道口"</td>
+</tr>
+<tr>
+<td><strong>Peer</strong></td>
+<td>对端节点（服务器或客户端）</td>
+<td>隧道另一头</td>
+</tr>
+<tr>
+<td><strong>Public Key / Private Key</strong></td>
+<td>非对称密钥对</td>
+<td>身份标识 + 加密密钥</td>
+</tr>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td>对端的公网 IP:端口</td>
+<td>"隧道口在哪"</td>
+</tr>
+<tr>
+<td><strong>Allowed IPs</strong></td>
+<td>允许从该 Peer 接收的源 IP 范围</td>
+<td>"隧道里跑什么流量"</td>
+</tr>
+<tr>
+<td><strong>Persistent Keepalive</strong></td>
+<td>定期发送心跳包（NAT 穿透用）</td>
+<td>"保持隧道畅通"</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ntp">NTP 是什么？</h4>
+<p>NTP (Network Time Protocol) 让设备通过互联网校准时钟：</p>
+<div class="codehilite"><pre><span></span><code>路由器启动 → NTP 客户端 → 询问 NTP 服务器 &quot;现在几点了？&quot;
+                               ↓
+                         ntp.tencent.com
+                         返回: 2026-06-09 23:14:52 CST
+                               ↓
+                         路由器: 设置时钟 → 精确到毫秒
+</code></pre></div>
+
+<p><strong>为什么路由器需要精确时间？</strong><br />
+- WireGuard 握手依赖时间戳（防重放攻击）<br />
+- 认证日志需要准确时间（排查问题）<br />
+- HTTPS/TLS 证书依赖时间戳验证<br />
+- cron 定时任务需要在正确的时间执行</p>
+<h4 id="nlbwmon">nlbwmon 是什么？</h4>
+<p>nlbwmon (NetLink BandWidth MONitor) 通过 Linux netlink 接口监控 conntrack（连接跟踪）表，统计每个 IP/协议的流量：</p>
+<div class="codehilite"><pre><span></span><code><span class="err">设备</span><span class="w"> </span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.100</span><span class="w"> </span><span class="err">访问</span><span class="w"> </span><span class="n">bilibili</span><span class="o">.</span><span class="n">com</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="err">内核</span><span class="w"> </span><span class="n">conntrack</span><span class="w"> </span><span class="err">表记录</span><span class="p">:</span><span class="w"> </span><span class="n">src</span><span class="o">=</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.100</span><span class="w"> </span><span class="n">dst</span><span class="o">=</span><span class="mf">203.107</span><span class="o">.</span><span class="mf">1.1</span><span class="w"> </span><span class="n">port</span><span class="o">=</span><span class="mi">443</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">nlbwmon</span><span class="w"> </span><span class="err">每</span><span class="w"> </span><span class="mi">30</span><span class="w"> </span><span class="err">秒读取</span><span class="w"> </span><span class="n">conntrack</span><span class="w"> </span><span class="err">表</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="err">累计流量字节数</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="err">存入</span><span class="w"> </span><span class="o">/</span><span class="k">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">nlbwmon</span><span class="w"> </span><span class="err">数据库</span>
+<span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">LuCI</span><span class="w"> </span><span class="n">Web</span><span class="w"> </span><span class="err">界面可以按天</span><span class="o">/</span><span class="err">周</span><span class="o">/</span><span class="err">月查看图表</span>
+</code></pre></div>
+
+<h4 id="collectd-rrdtool">collectd + RRDtool 是什么？</h4>
+<div class="codehilite"><pre><span></span><code><span class="n">collectd</span><span class="w"> </span><span class="p">(</span><span class="err">采集守护进程</span><span class="p">)</span>
+<span class="w">  </span><span class="err">│</span>
+<span class="w">  </span><span class="err">├──</span><span class="w"> </span><span class="n">CPU</span><span class="w"> </span><span class="err">插件</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">读取</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">stat</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">cpu使用率</span>
+<span class="w">  </span><span class="err">├──</span><span class="w"> </span><span class="n">Interface</span><span class="w"> </span><span class="err">插件</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">读取</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">net</span><span class="o">/</span><span class="n">dev</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">网络流量</span>
+<span class="w">  </span><span class="err">├──</span><span class="w"> </span><span class="n">Load</span><span class="w"> </span><span class="err">插件</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">读取</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">loadavg</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">系统负载</span>
+<span class="w">  </span><span class="err">├──</span><span class="w"> </span><span class="n">Memory</span><span class="w"> </span><span class="err">插件</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">读取</span><span class="w"> </span><span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">meminfo</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">内存使用</span>
+<span class="w">  </span><span class="err">├──</span><span class="w"> </span><span class="n">Ping</span><span class="w"> </span><span class="err">插件</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">ping</span><span class="w"> </span><span class="err">目标主机</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">延迟</span><span class="o">/</span><span class="err">丢包</span>
+<span class="w">  </span><span class="err">└──</span><span class="w"> </span><span class="n">iwinfo</span><span class="w"> </span><span class="err">插件</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="err">信号强度</span><span class="o">/</span><span class="err">速率</span>
+<span class="w">       </span><span class="err">│</span>
+<span class="w">       </span><span class="err">▼</span>
+<span class="w">  </span><span class="n">RRDtool</span><span class="w"> </span><span class="p">(</span><span class="n">Round</span><span class="w"> </span><span class="n">Robin</span><span class="w"> </span><span class="n">Database</span><span class="p">)</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="err">固定大小的环形数据库（不占空间）</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="err">自动降精度</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="err">秒</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mi">2</span><span class="err">小时</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mi">1</span><span class="err">天</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mi">1</span><span class="err">周</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mi">1</span><span class="err">月</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mi">1</span><span class="err">年</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="err">生成</span><span class="w"> </span><span class="n">PNG</span><span class="w"> </span><span class="err">图表</span>
+<span class="w">       </span><span class="err">│</span>
+<span class="w">       </span><span class="err">▼</span>
+<span class="w">  </span><span class="n">LuCI</span><span class="w"> </span><span class="n">Statistics</span><span class="w"> </span><span class="p">(</span><span class="n">Web</span><span class="w"> </span><span class="err">界面</span><span class="p">)</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="err">图表展示</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="err">可选时间段</span>
+</code></pre></div>
+
+<h3 id="111-wireguard-vpn">11.1 WireGuard VPN 客户端</h3>
+<h4 id="_27">安装</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 安装内核模块 + 用户态工具 + Web 管理界面</span>
+opkg<span class="w"> </span>update
+opkg<span class="w"> </span>install<span class="w"> </span>kmod-wireguard<span class="w"> </span>wireguard-tools<span class="w"> </span>luci-app-wireguard
+</code></pre></div>
+
+<blockquote>
+<p><strong>为什么需要 <code>kmod-wireguard</code>？</strong> WireGuard 需要内核模块做加密加速。MT7981B 有 EIP197 硬件加密引擎，<code>kmod-wireguard</code> 可以利用它，CPU 开销更低。</p>
+</blockquote>
+<h4 id="_28">生成密钥对</h4>
+<p>每台 WireGuard 设备需要一对密钥（公钥发给对方，私钥自己保管）：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 生成私钥</span>
+wg<span class="w"> </span>genkey<span class="w"> </span>&gt;<span class="w"> </span>/etc/wireguard/private.key
+
+<span class="c1"># 从私钥导出公钥</span>
+wg<span class="w"> </span>pubkey<span class="w"> </span>&lt;<span class="w"> </span>/etc/wireguard/private.key<span class="w"> </span>&gt;<span class="w"> </span>/etc/wireguard/public.key
+
+<span class="c1"># 设置权限（私钥必须保密）</span>
+chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span>/etc/wireguard/private.key
+</code></pre></div>
+
+<p><strong>原理</strong>：WireGuard 使用 Curve25519 椭圆曲线加密。私钥产生公钥的过程数学上是单向的——有私钥可以算出公钥，但从公钥无法反推私钥。这与 SSH 的 <code>ssh-keygen</code> 原理相同。</p>
+<h4 id="_29">配置接口</h4>
+<p>有两种配置方式：</p>
+<p><strong>方式一：LuCI Web 界面</strong>（推荐小白）<br />
+1. 登录 <code>http://192.168.1.1</code><br />
+2. Network → Interfaces → Add new interface<br />
+3. Protocol: WireGuard VPN<br />
+4. 填入 Private Key、IP Address、Peer 信息<br />
+5. Save &amp; Apply</p>
+<p><strong>方式二：UCI 命令行</strong>（推荐开发者，更可控）</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 创建 wg0 接口</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.wg0<span class="o">=</span>interface
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.wg0.proto<span class="o">=</span><span class="s1">&#39;wireguard&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.wg0.private_key<span class="o">=</span><span class="s1">&#39;$(cat /etc/wireguard/private.key)&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.wg0.addresses<span class="o">=</span><span class="s1">&#39;10.66.66.2/24&#39;</span>
+
+<span class="c1"># 配置 Peer（VPN 服务器）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]=</span>wireguard_wg0
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]</span>.public_key<span class="o">=</span><span class="s1">&#39;&lt;服务器公钥&gt;&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]</span>.endpoint_host<span class="o">=</span><span class="s1">&#39;47.94.146.53&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]</span>.endpoint_port<span class="o">=</span><span class="s1">&#39;51820&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]</span>.allowed_ips<span class="o">=</span><span class="s1">&#39;10.66.66.0/24&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]</span>.persistent_keepalive<span class="o">=</span><span class="s1">&#39;25&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.@wireguard_wg0<span class="o">[</span><span class="m">0</span><span class="o">]</span>.route_allowed_ips<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+
+<span class="c1"># 提交并生效</span>
+uci<span class="w"> </span>commit<span class="w"> </span>network
+ifup<span class="w"> </span>wg0
+</code></pre></div>
+
+<p><strong>关键参数解释</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>addresses</code></td>
+<td><code>10.66.66.2/24</code></td>
+<td>路由器在 VPN 网络中的 IP（服务器端分配）</td>
+</tr>
+<tr>
+<td><code>endpoint_host</code></td>
+<td><code>47.94.146.53</code></td>
+<td>VPN 服务器的公网 IP</td>
+</tr>
+<tr>
+<td><code>endpoint_port</code></td>
+<td><code>51820</code></td>
+<td>WireGuard 默认端口</td>
+</tr>
+<tr>
+<td><code>allowed_ips</code></td>
+<td><code>10.66.66.0/24</code></td>
+<td>只走 VPN 的流量（不是全隧道，不影响正常上网）</td>
+</tr>
+<tr>
+<td><code>persistent_keepalive</code></td>
+<td><code>25</code></td>
+<td>每 25 秒发心跳保活（NAT 穿透）</td>
+</tr>
+<tr>
+<td><code>route_allowed_ips</code></td>
+<td><code>1</code></td>
+<td>自动添加路由，让 <code>10.66.66.0/24</code> 的流量走 wg0</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>为什么 <code>allowed_ips</code> 是 <code>10.66.66.0/24</code> 而不是 <code>0.0.0.0/0</code>？</strong><br />
+- <code>0.0.0.0/0</code> = 全隧道模式，所有流量走 VPN。你会失去校园网直连速度。<br />
+- <code>10.66.66.0/24</code> = 分流模式，只有 VPN 内网流量走 wg0，正常上网仍走校园网。<br />
+- 这叫 <strong>split tunneling</strong>（分流隧道），是最实用的配置。</p>
+<p><strong>为什么需要 <code>persistent_keepalive</code>？</strong> 校园网使用 NAT（10.x.x.x 是私网 IP），NAT 网关的映射表有超时时间（通常 30-120 秒）。如果超时，外部服务器就无法主动向路由器发数据。<code>persistent_keepalive: 25</code> 每 25 秒发一个空包保活，确保 NAT 映射不过期。</p>
+</blockquote>
+<h4 id="_30">开机自启</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># WireGuard 接口配置了 proto=&#39;wireguard&#39; 后，</span>
+<span class="c1"># netifd 会自动管理。确保 wg0 在 WAN 连接后就启动：</span>
+/etc/init.d/network<span class="w"> </span>restart
+</code></pre></div>
+
+<h4 id="_31">测试验证</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 查看 WireGuard 状态</span>
+wg<span class="w"> </span>show
+
+<span class="c1"># 输出示例：</span>
+<span class="c1"># interface: wg0</span>
+<span class="c1">#   public key: VIlkaOtBRmmC48WSHWaL7utDOnqe2hM8m8IJqtcHoVA=</span>
+<span class="c1">#   private key: (hidden)</span>
+<span class="c1">#   listening port: 34702</span>
+<span class="c1">#</span>
+<span class="c1"># peer: gawI306RcjX/nkxqeKBIwbZzYaft3O11zVlR1aM6uCk=</span>
+<span class="c1">#   endpoint: 47.94.146.53:51820</span>
+<span class="c1">#   allowed ips: 10.66.66.0/24</span>
+<span class="c1">#   latest handshake: 45 seconds ago</span>
+<span class="c1">#   transfer: 2.58 MiB received, 12.22 MiB sent</span>
+
+<span class="c1"># 检查接口</span>
+ip<span class="w"> </span>addr<span class="w"> </span>show<span class="w"> </span>wg0
+
+<span class="c1"># ping VPN 对端</span>
+ping<span class="w"> </span><span class="m">10</span>.66.66.1
+
+<span class="c1"># 检查路由</span>
+ip<span class="w"> </span>route<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>wg0
+<span class="c1"># 10.66.66.0/24 dev wg0 scope link</span>
+</code></pre></div>
+
+<p><strong>关键行解读</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>输出</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>latest handshake: 45 seconds ago</code></td>
+<td>最近一次密钥握手（正常，&lt; 2分钟）</td>
+</tr>
+<tr>
+<td><code>transfer: 2.58 MiB received, 12.22 MiB sent</code></td>
+<td>数据统计</td>
+</tr>
+<tr>
+<td><code>listening port: 34702</code></td>
+<td>路由器本地监听的 UDP 端口</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>"handshake" 是什么？</strong> WireGuard 没有"连接"的概念——它是无连接的。Handshake 只是定期重新协商加密密钥（默认每 2 分钟），即使没有数据传输。和 TCP 的三次握手不同，WireGuard 的 handshake 是单向的、异步的。</p>
+</blockquote>
+<h3 id="112-ntp">11.2 NTP 时间同步</h3>
+<h4 id="_32">安装与配置</h4>
+<p>ImmortalWrt 自带 <code>sysntpd</code>（busybox ntpd 的精简版），无需额外安装：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 查看 NTP 状态</span>
+ps<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ntpd
+
+<span class="c1"># 配置 NTP 服务器（中国境内的稳定服务器）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>system.ntp.enabled<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>system.ntp.enable_server<span class="o">=</span><span class="s1">&#39;1&#39;</span><span class="w">             </span><span class="c1"># 同时作为 NTP 服务器（给局域网设备对时）</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>system.ntp.server<span class="o">=</span><span class="s1">&#39;ntp.tencent.com&#39;</span><span class="w">  </span><span class="c1"># 腾讯 NTP</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>system.ntp.server<span class="o">=</span><span class="s1">&#39;ntp1.aliyun.com&#39;</span><span class="w">  </span><span class="c1"># 阿里云 NTP</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>system.ntp.server<span class="o">=</span><span class="s1">&#39;ntp.ntsc.ac.cn&#39;</span><span class="w">   </span><span class="c1"># 国家授时中心</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>system.ntp.server<span class="o">=</span><span class="s1">&#39;cn.ntp.org.cn&#39;</span><span class="w">    </span><span class="c1"># 中国 NTP 池</span>
+
+uci<span class="w"> </span>commit<span class="w"> </span>system
+/etc/init.d/sysntpd<span class="w"> </span>restart
+</code></pre></div>
+
+<p><strong>为什么选这些服务器？</strong></p>
+<table>
+<thead>
+<tr>
+<th>服务器</th>
+<th>运营方</th>
+<th style="text-align: center;">延迟（河南）</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ntp.tencent.com</code></td>
+<td>腾讯云</td>
+<td style="text-align: center;">~5ms</td>
+<td>遍布全国节点</td>
+</tr>
+<tr>
+<td><code>ntp1.aliyun.com</code></td>
+<td>阿里云</td>
+<td style="text-align: center;">~5ms</td>
+<td>可靠稳定</td>
+</tr>
+<tr>
+<td><code>ntp.ntsc.ac.cn</code></td>
+<td>中国科学院国家授时中心</td>
+<td style="text-align: center;">~10ms</td>
+<td>国家级授时源</td>
+</tr>
+<tr>
+<td><code>cn.ntp.org.cn</code></td>
+<td>NTP Pool 中国区</td>
+<td style="text-align: center;">~10ms</td>
+<td>冗余备份</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong><code>enable_server='1'</code> 是什么？</strong> 路由器不仅作为 NTP 客户端从互联网对时，还作为 NTP 服务器为局域网内的设备（手机、笔记本）提供时间。这样宿舍所有设备的时钟保持一致。</p>
+</blockquote>
+<h4 id="_33">验证</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 查看当前时间</span>
+date
+<span class="c1"># Tue Jun  9 23:33:39 CST 2026</span>
+
+<span class="c1"># 查看 NTP 同步状态</span>
+logread<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ntp
+<span class="c1"># ntpd: sending query to ntp.tencent.com</span>
+<span class="c1"># ntpd: reply from ntp.tencent.com: offset -0.023</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>offset 含义</strong>：本地时钟与 NTP 服务器的偏差（秒）。-0.023 表示本地慢了 23 毫秒。绝对值 &lt; 1 秒都是正常的。</p>
+</blockquote>
+<h3 id="113-nlbwmon">11.3 流量监控 (nlbwmon)</h3>
+<h4 id="_34">安装</h4>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>update
+opkg<span class="w"> </span>install<span class="w"> </span>nlbwmon<span class="w"> </span>luci-app-nlbwmon
+</code></pre></div>
+
+<blockquote>
+<p><strong>nlbwmon 的工作原理</strong>：Linux 内核的 conntrack 模块跟踪每一个网络连接。nlbwmon 通过 netlink socket 订阅 conntrack 事件，对每条连接的收发字节数进行累加统计。统计结果定期写入 SQLite 数据库。</p>
+</blockquote>
+<h4 id="_35">配置</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 刷新间隔：30 秒</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.refresh_interval<span class="o">=</span><span class="s1">&#39;30s&#39;</span>
+
+<span class="c1"># 提交间隔：24 小时（内存数据写入磁盘）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.commit_interval<span class="o">=</span><span class="s1">&#39;24h&#39;</span>
+
+<span class="c1"># 数据库保留：10 代（每月一个数据库，保留 10 个月）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.database_generations<span class="o">=</span><span class="s1">&#39;10&#39;</span>
+
+<span class="c1"># 统计周期：每月 1 日重置</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.database_interval<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+
+<span class="c1"># 数据库大小限制：10000 条记录</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.database_limit<span class="o">=</span><span class="s1">&#39;10000&#39;</span>
+
+<span class="c1"># 本地网络：统计这些子网的流量</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.local_network<span class="o">=</span><span class="s1">&#39;192.168.0.0/16&#39;</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.local_network<span class="o">=</span><span class="s1">&#39;10.0.0.0/8&#39;</span>
+uci<span class="w"> </span>add_list<span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.local_network<span class="o">=</span><span class="s1">&#39;lan&#39;</span>
+
+<span class="c1"># netlink 缓冲区：512 KB（连接数多时需要更大的缓冲区）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>nlbwmon.@nlbwmon<span class="o">[</span><span class="m">0</span><span class="o">]</span>.netlink_buffer_size<span class="o">=</span><span class="s1">&#39;524288&#39;</span>
+
+uci<span class="w"> </span>commit<span class="w"> </span>nlbwmon
+/etc/init.d/nlbwmon<span class="w"> </span>restart
+</code></pre></div>
+
+<p><strong>参数解释</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>refresh_interval</code></td>
+<td>30s</td>
+<td>从 conntrack 拉数据的频率</td>
+</tr>
+<tr>
+<td><code>commit_interval</code></td>
+<td>24h</td>
+<td>内存数据 flush 到磁盘的间隔（减少 Flash 写入）</td>
+</tr>
+<tr>
+<td><code>database_interval</code></td>
+<td>1</td>
+<td>每月 1 号开始新统计周期</td>
+</tr>
+<tr>
+<td><code>database_limit</code></td>
+<td>10000</td>
+<td>最多记录 10000 个不同连接（超过则忽略新连接）</td>
+</tr>
+<tr>
+<td><code>local_network</code></td>
+<td>192.168.0.0/16, 10.0.0.0/8, lan</td>
+<td>哪些流量算"本地上网"</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>为什么 <code>commit_interval</code> 设 24 小时？</strong> 路由器的 /overlay 分区是 NAND Flash，写入次数有限（约 10 万次擦写）。每小时写一次 = 一年 8760 次擦写 → 10 年后 Flash 可能损坏。24 小时写一次 = 一年 365 次 → 几乎不可能在路由器寿命内损坏。</p>
+</blockquote>
+<h4 id="web">在 Web 界面查看</h4>
+<ol>
+<li>登录 <code>http://192.168.1.1</code></li>
+<li>Services → Bandwidth Monitor</li>
+<li>可以看到每个设备的：<br />
+   - 总流量（下载/上传）<br />
+   - 按协议分类（HTTP/HTTPS/视频/游戏等）<br />
+   - 按时间段的流量趋势图</li>
+</ol>
+<h3 id="114-collectd-rrdtool">11.4 网络质量监控 (collectd + RRDtool)</h3>
+<h4 id="_36">安装</h4>
+<div class="codehilite"><pre><span></span><code>opkg<span class="w"> </span>update
+opkg<span class="w"> </span>install<span class="w"> </span>collectd<span class="w"> </span>collectd-mod-cpu<span class="w"> </span>collectd-mod-interface<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>collectd-mod-load<span class="w"> </span>collectd-mod-memory<span class="w"> </span>collectd-mod-iwinfo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>collectd-mod-ping<span class="w"> </span>collectd-mod-network<span class="w"> </span>collectd-mod-rrdtool<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>luci-app-statistics
+</code></pre></div>
+
+<p><strong>各模块用途</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>采集内容</th>
+<th>数据来源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cpu</code></td>
+<td>CPU 使用率（分核）</td>
+<td><code>/proc/stat</code></td>
+</tr>
+<tr>
+<td><code>interface</code></td>
+<td>网卡流量（字节/包）</td>
+<td><code>/proc/net/dev</code></td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>系统负载（1/5/15 min）</td>
+<td><code>/proc/loadavg</code></td>
+</tr>
+<tr>
+<td><code>memory</code></td>
+<td>内存使用</td>
+<td><code>/proc/meminfo</code></td>
+</tr>
+<tr>
+<td><code>iwinfo</code></td>
+<td>WiFi 信号/速率/噪声</td>
+<td><code>iwinfo</code></td>
+</tr>
+<tr>
+<td><code>ping</code></td>
+<td>网络延迟和丢包</td>
+<td>主动 ping 目标</td>
+</tr>
+<tr>
+<td><code>rrdtool</code></td>
+<td>数据存储+图表生成</td>
+<td>RRD 文件</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_37">配置</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 基础设置</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd.Interval<span class="o">=</span><span class="s1">&#39;30&#39;</span><span class="w">           </span><span class="c1"># 采样间隔 30 秒</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd.ReadThreads<span class="o">=</span><span class="s1">&#39;2&#39;</span><span class="w">         </span><span class="c1"># 2 个读线程（双核 CPU）</span>
+
+<span class="c1"># RRDtool 图表配置</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.rrdtool.default_timespan<span class="o">=</span><span class="s1">&#39;2hour&#39;</span><span class="w"> </span><span class="c1"># 默认显示 2 小时</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.rrdtool.image_width<span class="o">=</span><span class="s1">&#39;1200&#39;</span><span class="w">       </span><span class="c1"># 图表宽度</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.rrdtool.image_height<span class="o">=</span><span class="s1">&#39;300&#39;</span><span class="w">       </span><span class="c1"># 图表高度</span>
+
+<span class="c1"># RRD 数据保留策略（自动降精度）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_rrdtool.RRATimespans<span class="o">=</span><span class="s1">&#39;2hour 1day 1week 1month 1year&#39;</span>
+
+<span class="c1"># 启用 CPU 监控</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_cpu.enable<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_cpu.ReportByCpu<span class="o">=</span><span class="s1">&#39;1&#39;</span><span class="w">    </span><span class="c1"># 分核显示</span>
+
+<span class="c1"># 启用接口流量监控（关键接口）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_interface.enable<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_interface.Interfaces<span class="o">=</span><span class="s1">&#39;br-lan phy1-sta0&#39;</span>
+
+<span class="c1"># 启用系统负载</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_load.enable<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+
+<span class="c1"># 启用内存监控</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_memory.enable<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+
+<span class="c1"># 启用 WiFi 信号监控</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_iwinfo.enable<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+
+<span class="c1"># 启用 Ping 延迟监控</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_ping.enable<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_ping.Hosts<span class="o">=</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="w">  </span><span class="c1"># 本机（未来可加外网目标）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_ping.Interval<span class="o">=</span><span class="s1">&#39;30&#39;</span>
+
+uci<span class="w"> </span>commit<span class="w"> </span>luci_statistics
+/etc/init.d/collectd<span class="w"> </span>restart
+</code></pre></div>
+
+<h4 id="rrdtool">RRDtool 的降精度存储</h4>
+<p>RRDtool 的核心原理：数据越旧，精度越低，但覆盖时间越长。</p>
+<div class="codehilite"><pre><span></span><code>采样 (30 秒一次)
+  │
+  ▼
+RRA 2hour:   30秒精度 × 240点 = 覆盖 2 小时     ← 最新数据，最高精度
+RRA 1day:    5分钟精度 × 288点 = 覆盖 24 小时    ← 降精度：6个30秒合并为1个5分钟
+RRA 1week:   30分钟精度 × 336点 = 覆盖 7 天      ← 进一步降精度
+RRA 1month:  2小时精度 × 372点 = 覆盖 31 天     ← ...
+RRA 1year:   1天精度 × 365点 = 覆盖 365 天      ← 最老数据，最低精度
+</code></pre></div>
+
+<p>每个 RRA (Round Robin Archive) 是固定大小——数据满了以后，新数据<strong>覆盖</strong>旧数据。这就是 "Round Robin" 的含义——像一个环，永远转圈，永远不占更多空间。</p>
+<blockquote>
+<p><strong>为什么用 RRDtool 而不是普通数据库？</strong><br />
+- 普通数据库会无限增长（NoSQL/SQLite 都如此）<br />
+- 路由器只有 78MB overlay，不能承受无限增长的数据<br />
+- RRDtool 文件大小在创建时就确定了，永远不变<br />
+- 对于"监控趋势"来说，旧数据降精度完全够用</p>
+</blockquote>
+<h4 id="web_1">在 Web 界面查看</h4>
+<ol>
+<li>登录 <code>http://192.168.1.1</code></li>
+<li>Statistics → Graphs</li>
+<li>可以查看：<br />
+   - CPU 使用率（分核、分状态）<br />
+   - 网络流量（br-lan 局域网、phy1-sta0 WAN）<br />
+   - 系统负载（1/5/15 分钟平均）<br />
+   - 内存使用（总量/已用/缓存/缓冲）<br />
+   - WiFi 信号质量（需要 iwinfo 支持）<br />
+   - Ping 延迟图表</li>
+</ol>
+<h3 id="115">11.5 完成安装总结</h3>
+<p>安装完成后，路由器的软件包列表新增：</p>
+<div class="codehilite"><pre><span></span><code><span class="n">kmod</span><span class="o">-</span><span class="n">wireguard</span><span class="w">          </span><span class="err">←</span><span class="w"> </span><span class="n">WireGuard</span><span class="w"> </span><span class="err">内核模块</span><span class="w"> </span><span class="p">(</span><span class="err">硬件加速</span><span class="p">)</span>
+<span class="n">wireguard</span><span class="o">-</span><span class="n">tools</span><span class="w">         </span><span class="err">←</span><span class="w"> </span><span class="n">wg</span><span class="o">/</span><span class="n">wg</span><span class="o">-</span><span class="n">quick</span><span class="w"> </span><span class="err">命令行工具</span>
+<span class="n">luci</span><span class="o">-</span><span class="n">app</span><span class="o">-</span><span class="n">wireguard</span><span class="w">      </span><span class="err">←</span><span class="w"> </span><span class="n">Web</span><span class="w"> </span><span class="err">管理</span><span class="w"> </span><span class="n">WireGuard</span>
+
+<span class="n">luci</span><span class="o">-</span><span class="n">app</span><span class="o">-</span><span class="n">nlbwmon</span><span class="w">        </span><span class="err">←</span><span class="w"> </span><span class="err">流量监控</span><span class="w"> </span><span class="n">Web</span><span class="w"> </span><span class="err">界面</span>
+<span class="n">nlbwmon</span><span class="w">                 </span><span class="err">←</span><span class="w"> </span><span class="err">流量监控后端</span>
+
+<span class="n">collectd</span><span class="w">                </span><span class="err">←</span><span class="w"> </span><span class="err">性能数据采集守护进程</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="n">cpu</span><span class="w">        </span><span class="err">←</span><span class="w"> </span><span class="n">CPU</span><span class="w"> </span><span class="err">采集</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="n">interface</span><span class="w">  </span><span class="err">←</span><span class="w"> </span><span class="err">网络接口采集</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="nb">load</span><span class="w">       </span><span class="err">←</span><span class="w"> </span><span class="err">系统负载采集</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="n">memory</span><span class="w">     </span><span class="err">←</span><span class="w"> </span><span class="err">内存采集</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="n">iwinfo</span><span class="w">     </span><span class="err">←</span><span class="w"> </span><span class="n">WiFi</span><span class="w"> </span><span class="err">采集</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="n">ping</span><span class="w">       </span><span class="err">←</span><span class="w"> </span><span class="err">延迟采集</span>
+<span class="n">collectd</span><span class="o">-</span><span class="n">mod</span><span class="o">-</span><span class="n">rrdtool</span><span class="w">    </span><span class="err">←</span><span class="w"> </span><span class="n">RRDtool</span><span class="w"> </span><span class="err">存储</span>
+<span class="n">luci</span><span class="o">-</span><span class="n">app</span><span class="o">-</span><span class="n">statistics</span><span class="w">     </span><span class="err">←</span><span class="w"> </span><span class="err">图表</span><span class="w"> </span><span class="n">Web</span><span class="w"> </span><span class="err">界面</span>
+</code></pre></div>
+
+<p>开启的服务：</p>
+<table>
+<thead>
+<tr>
+<th>服务</th>
+<th>功能</th>
+<th style="text-align: center;">开机自启</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wg0</code></td>
+<td>WireGuard VPN 隧道</td>
+<td style="text-align: center;">✅ (netifd)</td>
+</tr>
+<tr>
+<td><code>sysntpd</code></td>
+<td>NTP 时间同步</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td><code>nlbwmon</code></td>
+<td>流量统计</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td><code>collectd</code></td>
+<td>性能采集</td>
+<td style="text-align: center;">✅</td>
+</tr>
+</tbody>
+</table>
+<h3 id="116">11.6 踩坑记录</h3>
+<h4 id="10wireguard-nat">坑 10：WireGuard 握手失败——NAT 类型导致的端点不可达</h4>
+<p><strong>现象</strong>：<code>wg show</code> 显示 <code>latest handshake: never</code>，ping 对端不通。</p>
+<p><strong>排查步骤</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 检查接口是否 up</span>
+ip<span class="w"> </span>link<span class="w"> </span>show<span class="w"> </span>wg0<span class="w">  </span><span class="c1"># 应该是 UP 状态</span>
+
+<span class="c1"># 2. 检查路由</span>
+ip<span class="w"> </span>route<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>wg0<span class="w">  </span><span class="c1"># 应该有 10.66.66.0/24 via wg0</span>
+
+<span class="c1"># 3. 检查防火墙</span>
+<span class="c1"># WireGuard 使用 UDP，确保 WAN 口的防火墙允许出站 UDP 51820</span>
+
+<span class="c1"># 4. 检查端点可达性</span>
+ping<span class="w"> </span><span class="m">47</span>.94.146.53<span class="w">  </span><span class="c1"># 确保服务器 IP 可达（这是校园网层面的问题）</span>
+
+<span class="c1"># 5. 检查 NAT 类型</span>
+<span class="c1"># 校园网使用对称 NAT（Symmetric NAT），对 UDP 要求更严格</span>
+<span class="c1"># persistent_keepalive=25 是必须的（维持 NAT 映射）</span>
+</code></pre></div>
+
+<p><strong>解决</strong>：<br />
+1. 确认 <code>persistent_keepalive='25'</code> 已设置（不要太长）<br />
+2. 确保 <code>route_allowed_ips='1'</code> 已开启<br />
+3. 如果服务器也换了 IP，需要更新 <code>endpoint_host</code></p>
+<h4 id="11nlbwmon">坑 11：nlbwmon 数据库不更新</h4>
+<p><strong>现象</strong>：LuCI 中带宽图表始终为空。</p>
+<p><strong>排查</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 检查 conntrack 是否正常</span>
+cat<span class="w"> </span>/proc/net/nf_conntrack<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-5
+
+<span class="c1"># 检查 nlbwmon 进程</span>
+ps<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>nlbwmon
+
+<span class="c1"># 检查数据库目录</span>
+ls<span class="w"> </span>-la<span class="w"> </span>/var/lib/nlbwmon/
+
+<span class="c1"># 检查日志</span>
+logread<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>nlbwmon
+</code></pre></div>
+
+<p><strong>根因</strong>：通常是 <code>local_network</code> 配置不匹配。如果没把 LAN 子网加入 <code>local_network</code> 列表，nlbwmon 不会统计任何流量。</p>
+<p><strong>解决</strong>：确保 <code>list local_network 'lan'</code> 在配置中（会自动解析为 <code>192.168.1.0/24</code>）。</p>
+<h4 id="12collectd-rrd-tmp">坑 12：collectd RRD 文件占用 /tmp 被重启清空</h4>
+<p><strong>现象</strong>：路由器重启后，collectd 的历史图表全部丢失。</p>
+<p><strong>根因</strong>：默认 RRD 数据目录在 <code>/tmp/rrd</code>，而 <code>/tmp</code> 是 tmpfs（内存文件系统），重启清空。</p>
+<p><strong>解决</strong>：数据保留在 <code>/tmp</code> 是 OpenWrt 社区建议的做法（保护 NAND Flash）。如果想持久化，可以改为：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 改到 overlay 分区（会消耗 NAND 寿命）</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>luci_statistics.collectd_rrdtool.DataDir<span class="o">=</span><span class="s1">&#39;/overlay/rrd&#39;</span>
+uci<span class="w"> </span>commit<span class="w"> </span>luci_statistics
+/etc/init.d/collectd<span class="w"> </span>restart
+</code></pre></div>
+
+<blockquote>
+<p><strong>权衡</strong>：对于路由器来说，历史监控数据不是关键数据（不像配置和认证脚本）。接受重启丢失数据 vs 牺牲 NAND 寿命，前者更合理。重启后重新开始采集即可。</p>
+</blockquote>
+<h3 id="117">11.7 关键洞察</h3>
+<h4 id="_38">为什么用分流模式而不是全隧道？</h4>
+<div class="codehilite"><pre><span></span><code>分流模式 (allowed_ips = 10.66.66.0/24):
+  宿舍设备 → 路由器 → 校园网 → 百度/腾讯/...     ← 直连，低延迟
+                    → VPN隧道 → 10.66.66.x     ← VPN，内网资源
+
+全隧道模式 (allowed_ips = 0.0.0.0/0):
+  宿舍设备 → 路由器 → VPN隧道 → VPN服务器 → 百度/腾讯/...  ← 绕一圈，延迟+瓶颈
+</code></pre></div>
+
+<p>对于"偶尔访问 VPN 内部资源"的场景（如远程桌面、NAS、内网服务），分流模式是最佳选择：<br />
+- 百度/视频/游戏走校园网直连（低延迟 + 100Mbps 带宽）<br />
+- VPN 内网资源走隧道（透明，设备无感）</p>
+<h4 id="_39">为什么三个功能一起装？</h4>
+<p>这三个功能形成了一个"运维闭环"：</p>
+<div class="codehilite"><pre><span></span><code>流量监控 (nlbwmon) → 发现问题（谁在用我的网？为什么卡？）
+         ↓
+网络质量监控 (collectd) → 诊断问题（是校园网卡还是路由器 CPU 满了？）
+         ↓
+WireGuard VPN → 远程访问（出门在外也能连回来看监控数据）
+NTP → 确保所有日志/图表时间准确
+</code></pre></div>
+
+<blockquote>
+<p><strong>实用场景</strong>：回家过年后，SSH 连回宿舍路由器 → 查看 collectd 图表确认路由器稳定运行 → 查看 nlbwmon 确认室友没在下载 BT → 通过 WireGuard 访问学校图书馆资源。</p>
+</blockquote>
 <hr />
 <blockquote>
 <p><strong>最后更新</strong>：2026-06-09<br />
-<strong>完成状态</strong>：🎉 步骤0 + Phase 0-10 + 步骤11 全部完成<br />
-<strong>新增</strong>：步骤0（刷机全过程）、Phase 0 概念扩展（文件系统/看门狗/守护进程）、WAN/LAN 区分、步骤11（广告拦截）</p>
+<strong>完成状态</strong>：🎉 步骤0 + Phase 0-10 + 步骤11 + Phase 11 全部完成<br />
+<strong>新增</strong>：步骤0（刷机全过程）、Phase 0 概念扩展（文件系统/看门狗/守护进程）、WAN/LAN 区分、步骤11（广告拦截）、Phase 11（WireGuard VPN + NTP + 流量监控 + 网络质量监控）</p>
 </blockquote>
 
 <div style="text-align:center;color:#94a3b8;font-size:0.85em;margin-top:3em;padding-top:1em;border-top:1px solid #e2e8f0;">
