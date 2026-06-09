@@ -589,6 +589,59 @@ scp<span class="w"> </span>immortalwrt-24.10.5-*.bin<span class="w"> </span>root
 </code></pre></div>
 
 <hr />
+<h3 id="0clinux">概念 0c：Linux 是什么——你路由器跑的"操作系统" ⭐</h3>
+<p><strong>一句话</strong>：Linux 是一个操作系统，就像 Windows。但路由器没有屏幕、没有鼠标、没有桌面——你通过"打字"来操控它。</p>
+<p><strong>Linux 为什么能跑在路由器上？</strong> 普通电脑跑 Windows 需要 4-8GB 内存、几十 GB 硬盘。Linux 可以<strong>极度精简</strong>——去掉图形界面、去掉不必要的驱动，一个完整功能的路由器系统只需要约 10MB 存储和 64MB 内存。</p>
+<p><strong>OpenWrt = 专门给路由器用的 Linux</strong>：</p>
+<div class="codehilite"><pre><span></span><code>普通电脑 Linux (Ubuntu/Debian)      路由器 Linux (OpenWrt)
+  图形桌面 ✓                          图形桌面 ✗
+  包管理器: apt (几万个包)             包管理器: opkg (几千个包)
+  命令: GNU coreutils (完整版)         命令: BusyBox (嵌入式精简版)
+  网络配置: 分散在多个文件             网络配置: UCI 统一管理
+  安装大小: 5-20 GB                   安装大小: ~10 MB (压缩)
+</code></pre></div>
+
+<p><strong>你看到的命令行提示符</strong>：</p>
+<div class="codehilite"><pre><span></span><code>root@ImmortalWrt:~#
+<span class="w"> </span>↑<span class="w">       </span>↑<span class="w">       </span>↑<span class="w"> </span>↑
+<span class="w"> </span>│<span class="w">       </span>│<span class="w">       </span>│<span class="w"> </span>└──<span class="w"> </span><span class="c1"># 表示你是 root（超级管理员），$ 表示普通用户</span>
+<span class="w"> </span>│<span class="w">       </span>│<span class="w">       </span>└──<span class="w"> </span>~<span class="w"> </span>表示当前在<span class="w"> </span>root<span class="w"> </span>用户的家目录<span class="w"> </span><span class="o">(</span>/root<span class="o">)</span>
+<span class="w"> </span>│<span class="w">       </span>└──<span class="w"> </span>主机名（路由器的<span class="s2">&quot;电脑名&quot;</span>）
+<span class="w"> </span>└──<span class="w"> </span>当前用户名（root<span class="w"> </span><span class="o">=</span><span class="w"> </span>超级管理员，Linux<span class="w"> </span>最高权限）
+</code></pre></div>
+
+<p><strong>Linux 和 Windows 的关键差异</strong>：<br />
+| 特性 | Windows | Linux |<br />
+|------|---------|-------|<br />
+| 路径分隔符 | <code>\</code>（反斜杠） | <code>/</code>（正斜杠） |<br />
+| 盘符 | <code>C:</code>, <code>D:</code> | 没有盘符，一切从 <code>/</code> 开始 |<br />
+| 大小写 | 不区分 | <strong>严格区分</strong>（<code>Network</code> ≠ <code>network</code>） |<br />
+| 文件后缀 | <code>.exe</code> 可执行 | 靠文件权限判断（<code>.sh</code> 只是约定） |<br />
+| 系统配置 | 注册表 | <code>/etc/</code> 下的文本文件 |<br />
+| 超级用户 | Administrator | <strong>root</strong>（UID=0） |</p>
+<p><strong>root 是什么？</strong> root = Linux 的"Administrator"——拥有最高权限，能做任何事情。路由器的所有配置都需要 root 权限（所以 SSH 进去就是 root）。<code>#</code> 是 root 的标志，<code>$</code> 是普通用户的标志。教程中所有命令都在 <code>#</code> 下执行。</p>
+<hr />
+<h3 id="0dbusybox">概念 0d：BusyBox——为什么有些命令"不对劲" ⭐⭐</h3>
+<p><strong>一句话</strong>：路由器上的 <code>ls</code>、<code>cat</code>、<code>echo</code>、<code>wget</code> 都不是"原版"，而是 BusyBox 的精简版。</p>
+<p><strong>为什么？</strong> 正常的 Linux 每个命令都是一个独立的程序文件，几十个命令加起来 5-10MB。路由器 Flash 空间极其有限，所以用 BusyBox——<strong>一个 500KB 的程序包含了所有常用命令</strong>。</p>
+<p><strong>BusyBox 的工作原理</strong>：</p>
+<div class="codehilite"><pre><span></span><code>/bin/ls<span class="w">      </span>→<span class="w"> </span>指向<span class="w"> </span>/bin/busybox<span class="w"> </span>的符号链接
+/bin/cat<span class="w">     </span>→<span class="w"> </span>指向<span class="w"> </span>/bin/busybox<span class="w"> </span>的符号链接
+/bin/echo<span class="w">    </span>→<span class="w"> </span>指向<span class="w"> </span>/bin/busybox<span class="w"> </span>的符号链接
+/bin/sh<span class="w">      </span>→<span class="w"> </span>指向<span class="w"> </span>/bin/busybox<span class="w"> </span>的符号链接
+<span class="c1"># 当执行 ls 时，BusyBox 检查自己被调用的名字，执行对应功能</span>
+</code></pre></div>
+
+<p><strong>BusyBox 的常见坑</strong>：<br />
+| 命令 | GNU 原版行为 | BusyBox 行为 | 影响 |<br />
+|------|-------------|-------------|------|<br />
+| <code>echo -e</code> | 解释 <code>\n</code> 为换行 | <strong>不解释</strong>，原样输出 <code>-e \n</code> | 设密码时踩坑！ |<br />
+| <code>wget</code> | 功能相当于 curl 的子集 | <strong>更少</strong>（无 <code>--data-raw</code>） | 认证脚本只能用 <code>--post-data</code> |<br />
+| <code>grep</code> | 支持 <code>-P</code> (Perl 正则) | 不支持 <code>-P</code> | 复杂正则写不了 |</p>
+<blockquote>
+<p><strong>教训</strong>：在路由器上写脚本时，永远用 <code>printf</code> 代替 <code>echo -e</code>，用简单的正则表达式，不确定性行为时先测试。</p>
+</blockquote>
+<hr />
 <h3 id="0wan-lan-wlan">概念 0：WAN / LAN / WLAN——三个容易混淆的词 ⭐</h3>
 <p>这是最基础但最容易搞混的三个词：</p>
 <div class="codehilite"><pre><span></span><code>WAN (Wide Area Network)    = 广域网 = &quot;外面&quot;
