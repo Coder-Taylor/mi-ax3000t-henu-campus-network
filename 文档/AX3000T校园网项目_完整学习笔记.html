@@ -642,6 +642,34 @@ scp<span class="w"> </span>immortalwrt-24.10.5-*.bin<span class="w"> </span>root
 <p><strong>教训</strong>：在路由器上写脚本时，永远用 <code>printf</code> 代替 <code>echo -e</code>，用简单的正则表达式，不确定性行为时先测试。</p>
 </blockquote>
 <hr />
+<h3 id="0eetchosts-dns">概念 0e：/etc/hosts——"本地通讯录"，比 DNS 更快更可靠 ⭐</h3>
+<p><strong>一句话</strong>：<code>/etc/hosts</code> 是一个文本文件，手动写死"域名=IP"的对应关系。系统查 DNS 之前<strong>先查 hosts</strong>。</p>
+<div class="codehilite"><pre><span></span><code>/etc/hosts 文件：
+202.196.96.29   zwyy.henu.edu.cn       ← 这一行就是说：zwyy.henu.edu.cn = 202.196.96.29
+58.212.123.41   software.henu.edu.cn   ← software.henu.edu.cn = 58.212.123.41
+</code></pre></div>
+
+<p><strong>查询优先级</strong>（系统要访问 <code>zwyy.henu.edu.cn</code> 时）：</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">1.</span><span class="w"> </span><span class="n">先翻</span><span class="w"> </span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">hosts</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">找到</span><span class="w"> </span><span class="mf">202.196.96.29</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">直接用</span><span class="err">，</span><span class="n">结束</span><span class="err">！</span><span class="w"> </span><span class="err">✅</span>
+<span class="mf">2.</span><span class="w"> </span><span class="n">如果</span><span class="w"> </span><span class="n">hosts</span><span class="w"> </span><span class="n">里没有</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">问</span><span class="w"> </span><span class="n">DNS</span><span class="w"> </span><span class="n">服务器</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">等回复</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">用</span><span class="w"> </span><span class="n">DNS</span><span class="w"> </span><span class="n">返回的</span><span class="w"> </span><span class="n">IP</span>
+</code></pre></div>
+
+<p><strong>hosts vs DNS 对比</strong>：<br />
+| 维度 | DNS 查询 | /etc/hosts |<br />
+|------|----------|------------|<br />
+| 比喻 | 打114查号台 | 翻自己通讯录 |<br />
+| 速度 | 需网络（几毫秒~几秒） | 本地文件读取（微秒级） |<br />
+| 被劫持风险 | 有（DNS污染/劫持） | 无（只要文件没被改） |<br />
+| 维护 | 自动更新 | 需手动更新（IP变了要自己改） |</p>
+<p><strong>为什么本项目用它？</strong> 校园网 DNS（111.6.174.198）对某些内部域名：<br />
+- 返回错误IP（<code>zwyy</code> → <code>125.219.33.206</code> 不可达）<br />
+- 返回空结果（<code>software</code> → 没有A记录）<br />
+- 返回的 RFC1918 内网 IP 被 dnsmasq 的 rebind 保护拦截</p>
+<p><code>/etc/hosts</code> 绕过了所有这些问题——<strong>不走 DNS 查询，不受任何干扰</strong>。代价是需要手动维护（但校园内部网站的 IP 通常几年不变，值得）。</p>
+<blockquote>
+<p><strong>和 DNS 转发的区别</strong>：UCI 的 <code>server='/xg.henu.edu.cn/114.114.114.114'</code> 是"这个域名去问 114"，本质上还是走 DNS（受 DNS 影响）。hosts 是"这个域名就是这个 IP，别问了"，完全不走 DNS——前者快且可靠，后者灵活。</p>
+</blockquote>
+<hr />
 <h3 id="0wan-lan-wlan">概念 0：WAN / LAN / WLAN——三个容易混淆的词 ⭐</h3>
 <p>这是最基础但最容易搞混的三个词：</p>
 <div class="codehilite"><pre><span></span><code>WAN (Wide Area Network)    = 广域网 = &quot;外面&quot;
