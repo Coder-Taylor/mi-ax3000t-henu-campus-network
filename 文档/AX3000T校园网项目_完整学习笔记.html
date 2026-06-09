@@ -286,35 +286,120 @@ Reset：小孔，需要用牙签/卡针捅
 <blockquote>
 <p><strong>XMiR-Patcher 是什么？</strong> 一个 Python 工具，利用小米固件的漏洞来解锁 SSH、备份分区、刷入新 U-Boot。它是 openwrt-xiaomi 社区维护的开源项目。</p>
 </blockquote>
+<p><strong>前置检查——你的路由器状态</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>路由器状态</th>
+<th>你需要做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>全新刚拆箱</strong></td>
+<td>通电→网线连电脑 LAN4→浏览器打开 <code>miwifi.com</code>→按小米引导设管理密码（<strong>记住密码！</strong>后面用）。完成初始化后继续</td>
+</tr>
+<tr>
+<td><strong>之前用过，记得管理密码</strong></td>
+<td>通电→网线连电脑 LAN4→确认浏览器能登录 <code>miwifi.com</code>。继续</td>
+</tr>
+<tr>
+<td><strong>之前用过，忘了管理密码</strong></td>
+<td>通电→牙签按住 Reset 孔 10 秒→等灯闪烁→恢复出厂。然后按"全新"流程初始化</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>路由器需要插 WAN 口吗？</strong> 不需要。XMiR-Patcher 只需要电脑和路由器在同一局域网，不需要路由器能上网。</p>
+</blockquote>
 <p><strong>物理连接</strong>：</p>
-<div class="codehilite"><pre><span></span><code>电脑网口 ──── 网线 ──── 路由器 LAN4 口
+<div class="codehilite"><pre><span></span><code>电脑网口 ──── 网线 ──── 路由器 LAN4 口（不是 WAN！）
                             │
-                        路由器通电
+                        WAN 口留空，插电源
                             │
                         等 2 分钟启动完成
                             │
-                        电脑浏览器打开 miwifi.com 或 192.168.31.1
-                        确认能看到小米设置页面
+                        浏览器打开 192.168.31.1 或 miwifi.com
+                        确认能看到小米管理页面（用管理密码登录）
 </code></pre></div>
 
-<p><strong>操作步骤</strong>：<br />
-1. 双击 <code>!START.bat</code> 打开工具菜单<br />
-2. 菜单选项依次执行：<br />
-   - <code>[1] Connect to router</code> — 连接路由器<br />
-   - <code>[2] Read router info</code> — 读取设备信息<br />
-   - <code>[3] Create backup</code> — <strong>⚠️ 备份分区（极其重要！）</strong><br />
-   - <code>[4] Unlock SSH</code> — 启用 SSH<br />
-   - <code>[5] Install uboot</code> — 刷入新 U-Boot（大分区版）<br />
-   - <code>[6] Set env variables</code> — 设置启动变量</p>
+<p><strong>XMiR-Patcher 操作详解</strong>：</p>
+<p>双击 <code>!START.bat</code> 后会弹出命令行窗口菜单。<strong>按顺序执行以下 6 个步骤</strong>，每一步都要确认成功再继续：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>菜单项</th>
+<th>做什么</th>
+<th>怎么判断成功</th>
+<th style="text-align: center;">耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①</td>
+<td>Connect to router</td>
+<td>输入 <code>192.168.31.1</code> 和管理密码</td>
+<td>显示 "Connected" 或获取到 STOK</td>
+<td style="text-align: center;">几秒</td>
+</tr>
+<tr>
+<td>②</td>
+<td>Read router info</td>
+<td>读取设备型号和固件版本</td>
+<td>显示 "AX3000T"、固件版本号</td>
+<td style="text-align: center;">几秒</td>
+</tr>
+<tr>
+<td>③</td>
+<td><strong>Create backup</strong></td>
+<td><strong>备份全部分区到电脑</strong></td>
+<td>backups/ 目录下生成 .bin 文件</td>
+<td style="text-align: center;">2-5分钟</td>
+</tr>
+<tr>
+<td>④</td>
+<td>Unlock SSH</td>
+<td>修改启动脚本，开启 dropbear</td>
+<td>提示完成，路由器可能重启</td>
+<td style="text-align: center;">几秒</td>
+</tr>
+<tr>
+<td>⑤</td>
+<td>Install uboot</td>
+<td>刷入大分区 U-Boot</td>
+<td>提示完成</td>
+<td style="text-align: center;">几秒</td>
+</tr>
+<tr>
+<td>⑥</td>
+<td>Set env variables</td>
+<td>设置 U-Boot 从新分区启动</td>
+<td>提示完成</td>
+<td style="text-align: center;">几秒</td>
+</tr>
+</tbody>
+</table>
+<p><strong>每步详解</strong>：</p>
+<p><strong>① Connect to router</strong>：输入路由器 IP（默认 <code>192.168.31.1</code> 直接回车）和管理密码（在 miwifi.com 设的那个）。输入密码时屏幕不显示任何字符（连 <code>***</code> 都不显示），这是正常的安全措施。输完直接回车。</p>
+<p><strong>③ Create backup（⚠️ 最关键的一步）</strong>：工具通过 SSH 读取路由器整个 128MB Flash，抽取所有分区的数据保存到 <code>backups/</code> 文件夹。生成的备份文件：<br />
+- <code>mtd4_Factory.bin</code> ← WiFi 校准数据（最重要！）<br />
+- <code>mtd0_FULL_DUMP.bin</code> ← 完整闪存镜像<br />
+- <code>mtd1_BL2.bin</code>、<code>mtd5_FIP.bin</code> ← 启动相关<br />
+- 等共 10+ 个文件</p>
+<p><strong>备份完成后，立即把这些文件复制到网盘/U盘！</strong> 电脑硬盘坏了可以再买，这些数据丢了就是永久丢失。</p>
+<p><strong>④ Unlock SSH</strong>：原理是修改小米的 <code>/etc/init.d/dropbear</code> 启动脚本，在路由器启动时自动运行 SSH 服务器。小米原厂固件其实内置了 dropbear（因为小米自己也要远程调试），但默认是<strong>禁用</strong>的。XMiR-Patcher 把它改成<strong>启动时自动开启</strong>。</p>
+<p><strong>⑤ Install uboot</strong>：刷入大分区版 U-Boot。<strong>U-Boot 是什么？</strong> 路由器的"引导加载程序"（Bootloader），在 Linux 内核之前运行。它负责：<br />
+- 从哪个分区加载内核<br />
+- 传给内核什么参数<br />
+- 提供恢复模式（按住 Reset 通电）<br />
+大分区版 U-Boot 重新划分了 Flash 空间布局，把原厂碎片化的分区合并，给了 overlay 78MB（原厂约 10MB）。</p>
+<p><strong>⑥ Set env variables</strong>：写 U-Boot 环境变量。告诉 U-Boot "内核在 mtd8，用大分区布局启动"。</p>
 <blockquote>
-<p><strong>⚠️ 为什么要备份？</strong> 第 3 步会把 Factory 分区（WiFi 校准数据）等关键分区备份到 <code>backups/</code> 目录。这些数据每台路由器独一无二，丢了 WiFi 信号就废了且无法恢复。<strong>请把 backup 文件夹复制到网盘/U盘保存。</strong></p>
-</blockquote>
-<p>这些操作背后发生了什么：<br />
-- <code>[4] Unlock SSH</code>：修改小米的启动脚本，在系统启动时自动开启 dropbear SSH 服务<br />
-- <code>[5] Install uboot</code>：把小米原厂 U-Boot 替换成大分区版 U-Boot（支持 78MB overlay）<br />
-- <code>[6] Set env variables</code>：设置 U-Boot 环境变量，让它从新的大分区启动</p>
-<blockquote>
-<p><strong>小白学——U-Boot 是什么？</strong> U-Boot 是路由器的"引导加载程序"（Bootloader），相当于电脑的 GRUB/BIOS。它在 Linux 内核启动之前运行，负责加载内核。大分区版 U-Boot 重新划分了 Flash 空间，给了 overlay 78MB 而不是原厂的 ~10MB。</p>
+<p><strong>如果某一步失败了怎么办？</strong><br />
+- ① 连接失败：检查网线（插 LAN4 不是 WAN）、检查管理密码<br />
+- ③ 备份失败：确认路由器有足够空间（一般都有），重启路由器重试<br />
+- ④-⑥ 失败：确保前面步骤都成功了再试。通常不会失败</p>
 </blockquote>
 <h3 id="04">0.4 备份了什么？</h3>
 <p>执行备份后，<code>backups/</code> 目录下会生成以下文件：</p>
@@ -359,27 +444,70 @@ Reset：小孔，需要用牙签/卡针捅
 </blockquote>
 <h3 id="05-immortalwrt">0.5 刷入 ImmortalWrt 固件</h3>
 <p>固件文件：<code>小米AX3000T刷机教程openwrt大分区版/step2刷入openwrt/immortalwrt-24.10.5-...-sysupgrade.bin</code></p>
+<p>这是一个约 18MB 的 <code>.bin</code> 文件，包含：<br />
+- Linux 6.6 内核（约 4MB）<br />
+- squashfs 只读系统镜像（约 8MB）<br />
+- 其他元数据和校验信息</p>
+<blockquote>
+<p><strong>大分区版 vs 普通版固件</strong>：大分区版固件的内核知道 overlay 在 mtd9（78MB），普通版固件的内核可能只认小分区布局。<strong>U-Boot 和固件必须匹配</strong>——都是用的大分区版。</p>
+</blockquote>
 <p><strong>方法 A：通过 XMiR-Patcher 菜单</strong>（推荐新手）<br />
-- 工具菜单中有 "Install firmware" 选项，按提示选择固件文件即可</p>
-<p><strong>方法 B：通过 SCP + SSH 手动刷</strong></p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># 在电脑上（Windows 命令行/Git Bash）</span>
-<span class="c1"># 1. 把固件传到路由器</span>
-scp<span class="w"> </span><span class="s2">&quot;step2刷入openwrt/immortalwrt-24.10.5-...-sysupgrade.bin&quot;</span><span class="w"> </span>root@192.168.31.1:/tmp/
+- 工具菜单中有 "Install firmware" 选项<br />
+- 按提示选择固件文件 → 工具自动通过 SCP 上传并执行 sysupgrade<br />
+- 不需要手动操作命令行</p>
+<p><strong>方法 B：通过 SCP + SSH 手动刷</strong>（教学目的——理解刷机背后的操作）</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 在你的电脑上（新开一个命令行窗口）</span>
+<span class="c1"># 1. cd 到固件所在目录</span>
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;小米AX3000T刷机教程openwrt大分区版/step2刷入openwrt&quot;</span>
 
-<span class="c1"># 2. SSH 进路由器</span>
+<span class="c1"># 2. 用 scp 把固件传到路由器（SCP = Secure Copy，通过 SSH 复制文件）</span>
+scp<span class="w"> </span>immortalwrt-24.10.5-*.bin<span class="w"> </span>root@192.168.31.1:/tmp/
+<span class="c1">#   ↑ 会显示进度条：100%  18MB  ...</span>
+
+<span class="c1"># 3. SSH 进路由器</span>
 ssh<span class="w"> </span>root@192.168.31.1
 
-<span class="c1"># 3. 刷入固件</span>
+<span class="c1"># 4. 确认文件上传成功</span>
+ls<span class="w"> </span>-la<span class="w"> </span>/tmp/*.bin
+<span class="c1"># -rw-r--r--  1 root root  18874368 ... /tmp/immortalwrt-...-sysupgrade.bin</span>
+
+<span class="c1"># 5. 执行刷机</span>
 sysupgrade<span class="w"> </span>-n<span class="w"> </span>-v<span class="w"> </span>/tmp/immortalwrt-24.10.5-*-sysupgrade.bin
 </code></pre></div>
 
-<p>参数说明：<br />
-- <code>-n</code>：不保留原配置（全新安装，推荐）<br />
-- <code>-v</code>：详细输出（能看到进度）</p>
-<p><strong>刷机过程中</strong>：<br />
-- 路由器自动重启，指示灯会闪烁<br />
-- 整个过程约 3-5 分钟<br />
-- <strong>⚠️ 千万不要断电！</strong> 断电只影响正在写入的分区（mtd8/9），不会损坏 BL2/FIP，但需要重刷</p>
+<p><strong>sysupgrade 参数说明</strong>：<br />
+- <code>sysupgrade</code> = OpenWrt 标准刷机工具。它会：①验证固件完整性 ②擦除目标分区 ③写入新固件 ④设置启动标记 ⑤自动重启<br />
+- <code>-n</code>：不保留旧配置。刷机时不备份 <code>/etc/config/</code>，刷完后是全新的默认配置<br />
+- <code>-v</code>：verbose 详细输出。显示类似 <code>Writing to flash...</code>、<code>Verifying...</code> 的进度信息</p>
+<p><strong>sysupgrade 执行时你看到的</strong>：</p>
+<div class="codehilite"><pre><span></span><code>Saving config files...          ← 如果用 -n 这步跳过
+Commencing upgrade.             ← 开始刷写
+Closing all shell sessions.     ← 断开所有 SSH 连接
+Connection to 192.168.31.1 closed by remote host.
+</code></pre></div>
+
+<p>然后你的 SSH 连接会断开——<strong>这是正常行为！</strong> 路由器正在：<br />
+1. 擦除 mtd8 (ubi_kernel) 上的旧内核和 squashfs<br />
+2. 写入新固件<br />
+3. 设置 U-Boot 启动标记<br />
+4. 自动重启</p>
+<p><strong>路由器的时间线</strong>：</p>
+<div class="codehilite"><pre><span></span><code>t=0s     SSH 断开，开始擦写 Flash
+t=5s     刷写中（LED 可能闪烁）
+t=30s    刷写完成，自动重启
+t=30-60s 第一次重启（LED 可能灭掉再亮）
+t=90s    内核启动中（LED 闪烁）
+t=120s   系统就绪（LED 常亮）
+</code></pre></div>
+
+<p><strong>⚠️ 这 2-3 分钟内绝对不要做的事</strong>：<br />
+1. 断电<br />
+2. 拔网线<br />
+3. 按 Reset 按钮<br />
+4. 反复开关电源</p>
+<blockquote>
+<p><strong>万一断电了怎么办？</strong> 刷机写的是 mtd8/9 分区，不会损坏 BL2(mtd1) 和 FIP(mtd4)。只要 U-Boot 还在，按住 Reset 通电进入恢复模式，通过 TFTP 重刷即可。所以<strong>不用慌</strong>，但要尽量避免。</p>
+</blockquote>
 <h3 id="06">0.6 刷机后验证</h3>
 <p>等路由器完全启动（指示灯稳定常亮），验证刷机成功：</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 1. 浏览器访问 http://192.168.1.1（注意：不是 31.1 了！）</span>
@@ -409,6 +537,57 @@ df<span class="w"> </span>-h<span class="w"> </span>/overlay
 <p>如果你在后面的 Phase 中看到不理解的术语，Ctrl+F 回到这里。</p>
 </blockquote>
 <p>在理解我们做了什么之前，先建立这些核心概念。它们贯穿了整个项目。</p>
+<hr />
+<h3 id="0a">概念 0a：命令行/终端——你控制路由器的"遥控器" ⭐</h3>
+<blockquote>
+<p>如果你从未用过命令行，这个概念必须先理解。它本身不难——只是和平时用电脑的习惯不同。</p>
+</blockquote>
+<p><strong>命令行是什么？</strong> 平时你用电脑是"看到图标→鼠标点击"（图形界面）。命令行是"看到光标→打字命令→回车执行"（文字界面）。</p>
+<div class="codehilite"><pre><span></span><code>图形界面：                        命令行：
+  [复制按钮] → 点击              cp /tmp/file /etc/file ← 打字+回车
+  进度条 → 看到完成               &quot;file copied&quot; ← 看到文字反馈
+</code></pre></div>
+
+<p><strong>为什么学它？</strong> 路由器没有屏幕、没有鼠标、没有桌面。你只能通过"打字"来操控它。所有后面的教程命令都是这样工作的——你打字告诉路由器做什么。</p>
+<p><strong>在 Windows 上怎么打开？</strong><br />
+1. 按 <code>Win + R</code> → 输入 <code>cmd</code> → 回车<br />
+2. 或：右键开始菜单 → "终端"/"Windows PowerShell"<br />
+3. 打开后会看到 <code>C:\Users\你的名字&gt;</code> ——这是提示符，等你输入命令</p>
+<p><strong>基本操作</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;某个文件夹路径&quot;</span><span class="w">    </span><span class="c1"># 切换当前目录</span>
+dir<span class="w">                   </span><span class="c1"># 查看当前目录下有什么文件</span>
+命令<span class="w"> </span>-h<span class="w">               </span><span class="c1"># 大部分命令加 -h 或 --help 能看到帮助</span>
+Ctrl<span class="w"> </span>+<span class="w"> </span>C<span class="w">              </span><span class="c1"># 中断正在运行的命令</span>
+↑<span class="w"> </span>键<span class="w">                  </span><span class="c1"># 调出上一条命令（不用重新打）</span>
+</code></pre></div>
+
+<p><strong>教程中的命令格式</strong>：</p>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>root@192.168.1.1<span class="w">    </span><span class="c1"># ← 这是你要输入的</span>
+<span class="c1"># 输入密码               # ← 这是注释（解释给你看的），不用输入</span>
+</code></pre></div>
+
+<p>不要输入 <code>$</code> 或 <code>#</code> 符号（那些是提示符的表示），只输入后面的命令。</p>
+<hr />
+<h3 id="0bscp">概念 0b：SCP——怎么把电脑上的文件传到路由器 ⭐⭐</h3>
+<p><strong>一句话</strong>：SCP（Secure Copy）= 通过 SSH 加密通道复制文件。</p>
+<p>路由器没有 U 盘接口，没有文件管理器——你怎么把电脑上的固件文件传到路由器上？答案就是 SCP。</p>
+<p><strong>命令格式</strong>：</p>
+<div class="codehilite"><pre><span></span><code>scp<span class="w"> </span>&lt;源文件路径&gt;<span class="w"> </span>&lt;用户名&gt;@&lt;IP&gt;:&lt;目标路径&gt;
+scp<span class="w"> </span>firmware.bin<span class="w"> </span>root@192.168.31.1:/tmp/
+<span class="c1">#   ↑ 电脑上的文件     ↑ 传到路由器的 /tmp/ 目录</span>
+</code></pre></div>
+
+<p><strong>和 cp 命令的区别</strong>：<br />
+- <code>cp</code> = 同一台机器内部复制文件<br />
+- <code>scp</code> = 通过网络在两台机器之间复制文件（安全的，走 SSH 加密）</p>
+<p><strong>实际操作示例</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 先 cd 到固件所在的目录</span>
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;D:\小米AX3000T刷机教程openwrt大分区版\step2刷入openwrt&quot;</span>
+
+<span class="c1"># 上传固件到路由器</span>
+scp<span class="w"> </span>immortalwrt-24.10.5-*.bin<span class="w"> </span>root@192.168.31.1:/tmp/
+</code></pre></div>
+
 <hr />
 <h3 id="0wan-lan-wlan">概念 0：WAN / LAN / WLAN——三个容易混淆的词 ⭐</h3>
 <p>这是最基础但最容易搞混的三个词：</p>
