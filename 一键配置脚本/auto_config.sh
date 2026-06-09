@@ -316,7 +316,7 @@ step4_auth() {
 
     step_input "学号"
     read -r AUTH_USER
-    [ -z "$AUTH_USER" ] && AUTH_USER="2510250328"
+    [ -z "$AUTH_USER" ] && read -p "学号: " AUTH_USER
 
     echo ""
     step_input "校园网密码"
@@ -324,7 +324,7 @@ step4_auth() {
     read -r AUTH_PASS
     stty echo 2>/dev/null || true
     echo ""
-    [ -z "$AUTH_PASS" ] && AUTH_PASS="386095"
+    [ -z "$AUTH_PASS" ] && read -p "校园网密码: " AUTH_PASS
 
     echo ""
     echo "  运营商后缀:"

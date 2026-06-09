@@ -561,7 +561,7 @@ def deploy_initd():
     return ok_r and "DEPLOYED" in _
 
 def deploy_cron():
-    cron = """*/3 * * * * /etc/campus_network/auto_login.sh
+    cron = """*/5 * * * * /etc/campus_network/auto_login.sh
 @reboot sleep 30; /etc/campus_network/auto_login.sh
 0 4 * * 1,4 /sbin/reboot
 """
@@ -936,7 +936,7 @@ def lazy_mode():
     if net_type == "A":
         print()
         print(f"  {clr('D','━━━ Portal 认证信息 ━━━')}")
-        auth_user = ask("学号", default="2510250328")
+        auth_user = ask("学号")
         auth_pass = ask_pwd("校园网密码（上网认证用的）", confirm=True, min_len=1)
         op = ask_choice("运营商", [("1","@henuyd 移动"),("2","@henult 联通"),("3","@henudx 电信")], default="1")
         operator = {"1":"@henuyd","2":"@henult","3":"@henudx"}.get(op,"@henuyd")
