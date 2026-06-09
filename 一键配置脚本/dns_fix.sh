@@ -3,10 +3,11 @@
 #  校园网 DNS 修复脚本 v2.0
 #  修复：WiFi下无法访问校园网内部网站
 #
-#  问题1: 校园 DHCP DNS (111.6.174.198) 返回不可达IP
-#     zwyy.henu.edu.cn → 125.219.33.206   → /etc/hosts 写死
-#     xg.henu.edu.cn   → 172.31.0.6       → 114.114.114.114
-#     jwgl.henu.edu.cn → 211.142.109.84   → 111.6.174.198
+#  问题1: 校园 DHCP DNS (111.6.174.198) 返回不可达IP 或 解析为空
+#     zwyy.henu.edu.cn    → 125.219.33.206   → /etc/hosts 写死: 202.196.96.29
+#     software.henu.edu.cn → 解析为空          → /etc/hosts 写死: 58.212.123.41
+#     xg.henu.edu.cn      → 172.31.0.6       → 114.114.114.114
+#     jwgl.henu.edu.cn    → 211.142.109.84   → 111.6.174.198
 #
 #  问题2: dnsmasq rebind 丢弃 RFC1918 私有IP
 #     → rebind-domain-ok=/henu.edu.cn/
@@ -33,6 +34,13 @@ if grep -q 'zwyy.henu.edu.cn' /etc/hosts; then
 else
     echo '202.196.96.29 zwyy.henu.edu.cn' >> /etc/hosts
     echo "  [add]  /etc/hosts: zwyy.henu.edu.cn → 202.196.96.29"
+fi
+
+if grep -q 'software.henu.edu.cn' /etc/hosts; then
+    echo "  [skip] /etc/hosts: software 已存在"
+else
+    echo '58.212.123.41 software.henu.edu.cn' >> /etc/hosts
+    echo "  [add]  /etc/hosts: software.henu.edu.cn → 58.212.123.41"
 fi
 
 # === Fix 2: 精确域名 DNS 转发 ===
@@ -68,7 +76,7 @@ sleep 2
 
 echo ""
 echo "=== 验证 ==="
-for d in zwyy.henu.edu.cn jwgl.henu.edu.cn xg.henu.edu.cn; do
+for d in zwyy.henu.edu.cn software.henu.edu.cn jwgl.henu.edu.cn xg.henu.edu.cn; do
     IP=$(nslookup $d 2>&1 | grep -oE 'Address: [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
     if [ -z "$IP" ]; then
         echo "  ⚠️  $d → 解析失败"

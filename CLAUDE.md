@@ -60,14 +60,17 @@
 
 | 域名 | 111.6.174.198 | 114.114.114.114 | 解决方案 |
 |------|:---:|:---:|------|
-| zwyy.henu.edu.cn | 125.219.33.206 ❌ | 202.196.96.29 ✅ | → 114 |
+| zwyy.henu.edu.cn | 125.219.33.206 ❌ | 202.196.96.29 ✅ | → hosts 写死 202.196.96.29 |
+| software.henu.edu.cn | 解析为空 ❌ | 58.212.123.41 ✅ | → hosts 写死 58.212.123.41 |
 | jwgl.henu.edu.cn | 172.31.7.4 ✅ | 211.142.109.84 ❌ | → 111 + rebind豁免 |
 | xg.henu.edu.cn | 172.31.0.6 ❌ | 58.212.123.41 ✅ | → 114 |
 | lib.henu.edu.cn | 202.196.96.29 ✅ | 202.196.96.29 ✅ | 均可 |
 
 修复包含两部分：
-1. **UCI**: 精确域名 DNS 转发 (zwyy/xg→114, jwgl→111)
-2. **/etc/dnsmasq.conf**: `rebind-domain-ok=/henu.edu.cn/` 允许校园内部 RFC1918 IP
+1. **/etc/hosts**: 静态写死 zwyy→202.196.96.29, software→58.212.123.41（最可靠）
+2. **UCI**: 精确域名 DNS 转发 (xg→114, jwgl→111)
+3. **/etc/dnsmasq.conf**: `rebind-domain-ok=/henu.edu.cn/` 允许校园内部 RFC1918 IP
+4. **filter_aaaa=1**: 过滤 IPv6 解析（路由器无 IPv6 路由）
 
 一键修复: `sh /etc/campus_network/dns_fix.sh`
 

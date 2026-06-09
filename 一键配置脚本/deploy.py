@@ -615,17 +615,19 @@ def deploy_dns_fix():
     ok = True
 
     # Fix 1: /etc/hosts 静态解析 (最可靠, 不依赖DNS)
-    ok_r, out = ssh.run(
-        "grep -q 'zwyy.henu.edu.cn' /etc/hosts && echo EXISTS", timeout=5)
-    if not (ok_r and "EXISTS" in out):
+    for domain, ip in [("zwyy.henu.edu.cn", "202.196.96.29"),
+                        ("software.henu.edu.cn", "58.212.123.41")]:
         ok_r, out = ssh.run(
-            "echo '202.196.96.29 zwyy.henu.edu.cn' >> /etc/hosts && echo ADDED",
-            timeout=5)
-        if ok_r and "ADDED" in out:
-            _ok("  /etc/hosts: zwyy.henu.edu.cn → 202.196.96.29")
-        else:
-            _warn("  hosts 添加失败")
-            ok = False
+            f"grep -q '{domain}' /etc/hosts && echo EXISTS", timeout=5)
+        if not (ok_r and "EXISTS" in out):
+            ok_r, out = ssh.run(
+                f"echo '{ip} {domain}' >> /etc/hosts && echo ADDED",
+                timeout=5)
+            if ok_r and "ADDED" in out:
+                _ok(f"  /etc/hosts: {domain} → {ip}")
+            else:
+                _warn(f"  hosts 添加失败: {domain}")
+                ok = False
 
     # Fix 2: Per-domain DNS forwarding (hosts之外的域名)
     for domain, dns in [("xg.henu.edu.cn", "114.114.114.114"),
