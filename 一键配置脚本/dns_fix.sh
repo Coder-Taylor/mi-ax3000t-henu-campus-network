@@ -8,6 +8,7 @@
 #     software.henu.edu.cn → 解析为空          → /etc/hosts 写死: 58.212.123.41
 #     xg.henu.edu.cn      → 172.31.0.6       → 114.114.114.114
 #     jwgl.henu.edu.cn    → 211.142.109.84   → 111.6.174.198
+#     superhuazai.me      → 校园DNS间歇解析异常 → /etc/hosts 写死: 104.21.18.208 (Cloudflare)
 #
 #  问题2: dnsmasq rebind 丢弃 RFC1918 私有IP
 #     → rebind-domain-ok=/henu.edu.cn/
@@ -43,6 +44,13 @@ else
     echo "  [add]  /etc/hosts: software.henu.edu.cn → 58.212.123.41"
 fi
 
+if grep -q 'superhuazai.me' /etc/hosts; then
+    echo "  [skip] /etc/hosts: superhuazai 已存在"
+else
+    echo '104.21.18.208 superhuazai.me' >> /etc/hosts
+    echo "  [add]  /etc/hosts: superhuazai.me → 104.21.18.208 (Cloudflare)"
+fi
+
 # === Fix 2: 精确域名 DNS 转发 ===
 for item in "xg.henu.edu.cn:114.114.114.114" "jwgl.henu.edu.cn:111.6.174.198"; do
     domain=${item%%:*}
@@ -76,7 +84,7 @@ sleep 2
 
 echo ""
 echo "=== 验证 ==="
-for d in zwyy.henu.edu.cn software.henu.edu.cn jwgl.henu.edu.cn xg.henu.edu.cn; do
+for d in zwyy.henu.edu.cn software.henu.edu.cn jwgl.henu.edu.cn xg.henu.edu.cn superhuazai.me; do
     IP=$(nslookup $d 2>&1 | grep -oE 'Address: [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
     if [ -z "$IP" ]; then
         echo "  ⚠️  $d → 解析失败"

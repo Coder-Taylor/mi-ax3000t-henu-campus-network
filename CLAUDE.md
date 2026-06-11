@@ -74,9 +74,10 @@
 | jwgl.henu.edu.cn | 172.31.7.4 ✅ | 211.142.109.84 ❌ | → 111 + rebind豁免 |
 | xg.henu.edu.cn | 172.31.0.6 ❌ | 58.212.123.41 ✅ | → 114 |
 | lib.henu.edu.cn | 202.196.96.29 ✅ | 202.196.96.29 ✅ | 均可 |
+| superhuazai.me | 间歇解析异常 | 104.21.18.208 ✅ | → hosts 写死 104.21.18.208 (Cloudflare) |
 
 修复包含两部分：
-1. **/etc/hosts**: 静态写死 zwyy→202.196.96.29, software→58.212.123.41（最可靠）
+1. **/etc/hosts**: 静态写死 zwyy→202.196.96.29, software→58.212.123.41, superhuazai→104.21.18.208（最可靠）
 2. **UCI**: 精确域名 DNS 转发 (xg→114, jwgl→111)
 3. **/etc/dnsmasq.conf**: `rebind-domain-ok=/henu.edu.cn/` 允许校园内部 RFC1918 IP
 4. **filter_aaaa=1**: 过滤 IPv6 解析（路由器无 IPv6 路由）
