@@ -1,12 +1,12 @@
 #!/bin/sh
 # ==========================================================
-#  快速恢复守护进程 v1.0
+#  快速恢复守护进程 v2.0
 #  替代 cron 看门狗，实现秒级检测和恢复
 #
-#  解决的问题：
-#  - cron 每20秒检测太慢 → 本守护进程每秒检测
-#  - wifi reload 太慢(8s) → 使用 iw connect 直连(2s)
-#  - 重新认证太慢(15s) → 先尝试快速恢复路由
+#  v2.0 修复：
+#  - 启动时等待网络接口就绪（避免在网络未初始化时触发认证）
+#  - Level 4 必须路由存在才触发认证（修复无路由时白跑认证的 bug）
+#  - 增加 30 秒启动冷却期（给网络充分的初始化时间）
 # ==========================================================
 
 LOG_FILE="/tmp/campus_network.log"
@@ -33,6 +33,36 @@ check_network() {
     ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1
 }
 
+# 新增：等待网络接口就绪（启动时调用）
+wait_for_ready() {
+    log "⏳ 等待网络接口就绪..."
+    local i=0
+    while [ $i -lt 45 ]; do
+        # 检查 STA 已连接
+        if ! check_sta_connected; then
+            sleep 1
+            i=$((i + 1))
+            continue
+        fi
+        # 检查有 IP
+        if ! ip addr show $STA_IFACE 2>/dev/null | grep -q "inet "; then
+            sleep 1
+            i=$((i + 1))
+            continue
+        fi
+        # 检查有默认路由
+        if ! check_route; then
+            sleep 1
+            i=$((i + 1))
+            continue
+        fi
+        log "✅ 网络接口就绪（${i}秒）"
+        return 0
+    done
+    log "⚠️ 等待超时（${i}秒），继续运行..."
+    return 1
+}
+
 # 【快速恢复】仅重连 STA（不用 wifi reload，快得多）
 fast_sta_reconnect() {
     log "🔄 快速重连 STA..."
@@ -45,12 +75,14 @@ fast_sta_reconnect() {
     iw dev $STA_IFACE connect "$CAMPUS_SSID" $CAMPUS_CHANNEL 2>/dev/null
 
     # 等待连接建立（最多3秒）
-    for i in $(seq 1 6); do
+    local i=1
+    while [ $i -le 6 ]; do
         sleep 0.5
         if check_sta_connected; then
             log "✅ STA 重连成功（${i}个周期）"
             return 0
         fi
+        i=$((i + 1))
     done
 
     log "❌ 快速重连失败，回退到 wifi reload..."
@@ -78,8 +110,14 @@ main_loop() {
     local fail_count=0
     local last_auth_time=0
 
-    log "🚀 快速恢复守护进程启动"
+    log "🚀 快速恢复守护进程启动 v2.0"
     log "   检测间隔: 1秒 | 信道锁定: $CAMPUS_CHANNEL MHz"
+
+    # 新增：启动时等待网络接口就绪
+    wait_for_ready
+
+    # 新增：记录启动时间，用于冷却期判断
+    local start_time=$(date +%s)
 
     while true; do
         # === 层级1: 检查网络连通性 ===
@@ -127,9 +165,10 @@ main_loop() {
         fi
 
         # === 层级4: 路由存在但网络不通 → 认证过期 ===
-        # 避免频繁认证：至少间隔60秒
+        # v2.0 修复：必须路由存在才触发认证 + 启动冷却期 30 秒
         local now=$(date +%s)
-        if [ $fail_count -ge 3 ] && [ $((now - last_auth_time)) -ge 60 ]; then
+        local uptime_sec=$((now - start_time))
+        if [ $fail_count -ge 5 ] && check_route && [ $uptime_sec -ge 30 ] && [ $((now - last_auth_time)) -ge 60 ]; then
             log "🔐 路由存在但网络不通，触发认证..."
             last_auth_time=$now
             /etc/campus_network/auto_login.sh &
@@ -142,8 +181,12 @@ main_loop() {
             sleep 5
             ifup wwan 2>/dev/null
             sleep 3
-            /etc/campus_network/auto_login.sh &
+            # v2.0: 完整重置后也要检查路由再认证
+            if check_route; then
+                /etc/campus_network/auto_login.sh &
+            fi
             fail_count=0
+            start_time=$(date +%s)  # 重置冷却期
         fi
 
         sleep 1

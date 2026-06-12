@@ -360,9 +360,13 @@ step4_auth() {
 
     mkdir -p /etc/campus_network
 
-    cat > /etc/campus_network/auto_login.sh << SCRIPT_EOF
+    cat > /etc/campus_network/auto_login.sh << 'SCRIPT_EOF'
 #!/bin/sh
-# 校园网自动认证脚本（由 auto_config.sh 生成）
+# ==========================================================
+#  校园网自动认证脚本 v3.0
+#  v3.0: 增加 preflight_check（认证前检查网络就绪）
+#        first_auth 增加重试机制
+# ==========================================================
 
 USERNAME="${AUTH_USER}"
 PASSWORD="${AUTH_PASS}"
@@ -370,42 +374,82 @@ OPERATOR_SUFFIX="${AUTH_OP}"
 CAMPUS_CODE="${AUTH_CODE}"
 
 LOG_FILE="/tmp/campus_network.log"
+STA_IFACE="phy1-sta0"
 
 log() {
-    echo "[\$(date '+%Y-%m-%d %H:%M:%S')] \$1" >> \$LOG_FILE
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOG_FILE
+}
+
+# 新增：认证前预检查
+preflight_check() {
+    # 1. 检查 STA 接口有 IP
+    if ! ip addr show $STA_IFACE 2>/dev/null | grep -q "inet "; then
+        log "⚠️ 预检查失败: STA 接口无 IP"
+        return 1
+    fi
+
+    # 2. 检查默认路由存在
+    if ! ip route show default 2>/dev/null | grep -q "$STA_IFACE"; then
+        log "⚠️ 预检查失败: 无默认路由"
+        return 1
+    fi
+
+    # 3. 检查认证服务器可达（ping）
+    if ! ping -c 1 -W 2 172.29.35.27 >/dev/null 2>&1; then
+        log "⚠️ 预检查失败: 认证服务器不可达"
+        return 1
+    fi
+
+    return 0
 }
 
 get_auth_params() {
-    WAN_IP=\$(ip route get 8.8.8.8 2>/dev/null | awk '{for(i=1;i<=NF;i++) if(\$i=="src") print \$(i+1)}')
-    TIMESTAMP=\$((\$(date +%s) * 1000))
-    UUID=\$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
-    echo "\$WAN_IP \$TIMESTAMP \$UUID"
+    WAN_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+    TIMESTAMP=$(($(date +%s) * 1000))
+    UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
+    echo "$WAN_IP $TIMESTAMP $UUID"
 }
 
 first_auth() {
     log "第一步认证..."
-    RESPONSE1=\$(wget -q -O - \\
-        --post-data="campusCode=\${CAMPUS_CODE}&username=\${USERNAME}&password=\${PASSWORD}&operatorSuffix=\${OPERATOR_SUFFIX}" \\
-        --header="Content-Type: application/x-www-form-urlencoded" \\
-        --header="Referer: http://172.29.35.36:6060/" \\
-        "http://172.29.35.27:8088/aaa-auth/api/v1/auth" 2>&1)
-    log "第一步响应: \$RESPONSE1"
-    if echo "\$RESPONSE1" | grep -q '"code":1'; then
-        return 0
-    else
+    local retry=0
+    while [ $retry -lt 3 ]; do
+        RESPONSE1=$(wget -q -O - --timeout=10 \
+            --post-data="campusCode=${CAMPUS_CODE}&username=${USERNAME}&password=${PASSWORD}&operatorSuffix=${OPERATOR_SUFFIX}" \
+            --header="Content-Type: application/x-www-form-urlencoded" \
+            --header="Referer: http://172.29.35.36:6060/" \
+            "http://172.29.35.27:8088/aaa-auth/api/v1/auth" 2>&1)
+
+        log "第一步响应: $RESPONSE1"
+
+        # 成功
+        if echo "$RESPONSE1" | grep -q '"code":1'; then
+            return 0
+        fi
+
+        # 网络层错误 → 重试
+        if echo "$RESPONSE1" | grep -q "Operation not permitted\|Connection refused\|timed out\|Bad address"; then
+            log "⚠️ 网络层错误，等待 3 秒后重试 ($((retry+1))/3)..."
+            sleep 3
+            retry=$((retry + 1))
+            continue
+        fi
+
+        # 其他错误（如认证参数错误）→ 不重试
         return 1
-    fi
+    done
+    return 1
 }
 
 second_auth() {
     log "第二步认证..."
-    RESPONSE2=\$(wget -q -O - \\
-        --post-data="username=\${USERNAME}&password=\${PASSWORD}&operatorSuffix=\${OPERATOR_SUFFIX}" \\
-        --header="Content-Type: application/x-www-form-urlencoded" \\
-        --header="Referer: http://172.29.35.36:6060/" \\
+    RESPONSE2=$(wget -q -O - --timeout=10 \
+        --post-data="username=${USERNAME}&password=${PASSWORD}&operatorSuffix=${OPERATOR_SUFFIX}" \
+        --header="Content-Type: application/x-www-form-urlencoded" \
+        --header="Referer: http://172.29.35.36:6060/" \
         "http://172.29.35.27:8882/user/check-only" 2>&1)
-    log "第二步响应: \$RESPONSE2"
-    if echo "\$RESPONSE2" | grep -q '"code":1'; then
+    log "第二步响应: $RESPONSE2"
+    if echo "$RESPONSE2" | grep -q '"code":1'; then
         return 0
     else
         return 1
@@ -414,18 +458,23 @@ second_auth() {
 
 portal_auth() {
     log "第三步门户认证..."
-    PARAMS=\$(get_auth_params)
-    WAN_IP=\$(echo "\$PARAMS" | cut -d' ' -f1)
-    TIMESTAMP=\$(echo "\$PARAMS" | cut -d' ' -f2)
-    UUID=\$(echo "\$PARAMS" | cut -d' ' -f3)
-    log "参数: IP=\$WAN_IP, TS=\$TIMESTAMP, UUID=\$UUID"
-    RESPONSE3=\$(wget -q -O - \\
-        --header="Referer: http://172.29.35.36:6060/" \\
-        --header="Cookie: macAuth=; ABMS=362ee66b-fa1f-4ef9-a651-bfd9d61d194a" \\
-        -T 10 \\
-        "http://172.29.35.36:6060/quickauth.do?userid=\${USERNAME}%40henuyd&passwd=\${PASSWORD}&wlanuserip=\${WAN_IP}&wlanacname=HD-SuShe-ME60&wlanacIp=172.22.254.253&timestamp=\${TIMESTAMP}&uuid=\${UUID}" 2>&1)
-    log "第三步响应: \$RESPONSE3"
-    if echo "\$RESPONSE3" | grep -q '"message":"认证成功"'; then
+    PARAMS=$(get_auth_params)
+    WAN_IP=$(echo "$PARAMS" | cut -d' ' -f1)
+    TIMESTAMP=$(echo "$PARAMS" | cut -d' ' -f2)
+    UUID=$(echo "$PARAMS" | cut -d' ' -f3)
+
+    if [ -z "$WAN_IP" ]; then
+        log "⚠️ 无法获取 WAN IP"
+        return 1
+    fi
+
+    log "参数: IP=$WAN_IP, TS=$TIMESTAMP, UUID=$UUID"
+    RESPONSE3=$(wget -q -O - --timeout=10 \
+        --header="Referer: http://172.29.35.36:6060/" \
+        --header="Cookie: macAuth=; ABMS=362ee66b-fa1f-4ef9-a651-bfd9d61d194a" \
+        "http://172.29.35.36:6060/quickauth.do?userid=${USERNAME}%40henuyd&passwd=${PASSWORD}&wlanuserip=${WAN_IP}&wlanacname=HD-SuShe-ME60&wlanacIp=172.22.254.253&timestamp=${TIMESTAMP}&uuid=${UUID}" 2>&1)
+    log "第三步响应: $RESPONSE3"
+    if echo "$RESPONSE3" | grep -q '"message":"认证成功"'; then
         log "✅ 第三步认证成功"
         return 0
     else
@@ -461,13 +510,61 @@ full_auth() {
     fi
 }
 
+# 新增：恢复路由
+recover_route() {
+    log "⚠️ 检测到默认路由丢失，尝试恢复..."
+    if iw dev $STA_IFACE link 2>/dev/null | grep -q "Connected"; then
+        log "STA 仍连接，执行 DHCP 续租..."
+        killall -q -USR1 udhcpc 2>/dev/null
+        sleep 1
+        ifup wwan 2>/dev/null
+        sleep 3
+    else
+        log "STA 已断开，尝试重新连接 WiFi..."
+        wifi reload 2>/dev/null
+        sleep 5
+        ifup wwan 2>/dev/null
+        sleep 3
+    fi
+    if ip route show default 2>/dev/null | grep -q "$STA_IFACE"; then
+        log "✅ 路由已恢复"
+        return 0
+    else
+        log "❌ 路由恢复失败"
+        return 1
+    fi
+}
+
 main() {
-    log "=== 校园网认证启动 ==="
+    log "=== 校园网认证检测 ==="
+
+    # 第一步：检查网络连通性
     if check_network; then
-        log "网络已连通，无需认证"
+        log "网络已连通"
         return 0
     fi
-    log "网络未连通，开始完整认证流程..."
+
+    # 第二步：网络不通，先检查路由
+    if ! ip route show default 2>/dev/null | grep -q "$STA_IFACE"; then
+        log "⚠️ 默认路由丢失，尝试恢复..."
+        if recover_route; then
+            if check_network; then
+                log "✅ 路由恢复后网络已连通"
+                return 0
+            fi
+        fi
+    else
+        log "路由存在但网络不通（可能认证过期）"
+    fi
+
+    # 第三步：认证前预检查（v3.0 新增）
+    if ! preflight_check; then
+        log "❌ 预检查未通过，跳过本次认证（等待网络就绪）"
+        return 1
+    fi
+
+    # 第四步：完整认证
+    log "开始完整认证流程..."
     if full_auth; then
         sleep 5
         if check_network; then
