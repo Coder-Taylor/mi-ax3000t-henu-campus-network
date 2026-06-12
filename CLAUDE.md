@@ -28,6 +28,7 @@
 步骤10: ✅ 设备重连断网修复 v2（快速恢复守护进程替代cron看门狗）
 步骤11: ✅ 广告拦截 adblock（DNS 层面，185,435 域名，全设备生效）
 步骤12: ✅ WireGuard VPN 客户端 + NTP 时间同步 + 流量监控(nlbwmon) + 网络质量监控(collectd)
+Phase12: ✅ 修复启动后认证循环失败（v2.0守护进程 + v3.0认证脚本，恢复时间 8min→3min）
 ```
 
 ## 当前运行状态
@@ -48,8 +49,8 @@
 - Web管理: `http://192.168.1.1`（root / `<见 credentials.txt>`）
 - WiFi: `<见 credentials.txt>` / `<见 credentials.txt>`
 - 校园网: `<见 credentials.txt>` / `<见 credentials.txt>` / `@<见 credentials.txt>`
-- 认证脚本: `/etc/campus_network/auto_login.sh` (v2.0，含路由恢复)
-- 快速恢复守护进程: `/etc/campus_network/fast_recovery_daemon.sh` (每秒检测，秒级恢复)
+- 认证脚本: `/etc/campus_network/auto_login.sh` (v3.0，含 preflight_check + 重试机制)
+- 快速恢复守护进程: `/etc/campus_network/fast_recovery_daemon.sh` (v2.0，每秒检测，启动等待+冷却期)
 - 路由看门狗: `/etc/campus_network/route_watchdog.sh` (已被快速恢复守护进程替代)
 - 启动脚本: `/etc/init.d/campus_auth` / `/etc/init.d/fast_recovery` (开机启动)
 - 认证日志: `/tmp/campus_network.log`
@@ -88,6 +89,7 @@
 - 认证失败: `cat /tmp/campus_network.log`
 - 手动认证: `/etc/campus_network/auto_login.sh`
 - 网络中断恢复: 守护进程自动处理，查看 `grep FastRecovery /tmp/campus_network.log`
+- 启动后断网: 守护进程 v2.0 会自动等待网络就绪 + 30秒冷却期后才触发认证
 - 守护进程状态: `ps | grep fast_recovery` / `/etc/init.d/fast_recovery status`
 - 手动恢复路由: `/etc/campus_network/route_watchdog.sh`
 - 校园内部网站打不开: 检查 DNS 配置 `uci show dhcp | grep henu`，修复 `sh /etc/campus_network/dns_fix.sh`
