@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>性能图表 - LuCI Statistics</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; }
+.header { background: linear-gradient(135deg, #0a5c36 0%, #1a8a52 100%); color: white; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header .subtitle { font-size: 12px; opacity: 0.8; margin-left: auto; }
+.nav { background: #fff; border-bottom: 1px solid #ddd; padding: 8px 24px; display: flex; gap: 4px; }
+.nav span { padding: 6px 14px; font-size: 13px; color: #666; cursor: pointer; border-radius: 4px; }
+.nav span.active { background: #0a5c36; color: white; }
+.container { max-width: 960px; margin: 16px auto; padding: 0 16px; }
+.card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; overflow: hidden; }
+.card-header { background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 600; color: #0a5c36; display: flex; align-items: center; justify-content: space-between; }
+.card-body { padding: 20px; }
+.time-tabs { display: flex; gap: 4px; }
+.time-tabs span { padding: 4px 10px; font-size: 11px; color: #666; border: 1px solid #ddd; border-radius: 3px; cursor: pointer; }
+.time-tabs span.active { background: #0a5c36; color: white; border-color: #0a5c36; }
+.chart-container { position: relative; width: 100%; height: 280px; }
+svg { width: 100%; height: 100%; }
+.grid-line { stroke: #e8e8e8; stroke-width: 0.5; }
+.axis-label { font-size: 10px; fill: #999; font-family: -apple-system, sans-serif; }
+.chart-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chart-area { opacity: 0.08; }
+.legend { display: flex; gap: 24px; justify-content: center; margin-top: 12px; font-size: 12px; color: #666; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.stats-row { display: flex; gap: 16px; margin-top: 16px; justify-content: center; }
+.stat-box { background: #f8f9fa; border-radius: 6px; padding: 10px 20px; text-align: center; min-width: 100px; }
+.stat-value { font-size: 20px; font-weight: 700; color: #0a5c36; }
+.stat-label { font-size: 11px; color: #999; margin-top: 2px; }
+.footer { text-align: center; color: #999; font-size: 11px; padding: 16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📶 OpenWrt</h1>
+  <span style="font-size:14px;opacity:0.9">Statistics</span>
+  <div class="subtitle">AX3000T · 192.168.1.1</div>
+</div>
+
+<div class="nav">
+  <span>概览</span>
+  <span class="active">📈 性能图表</span>
+  <span>网络</span>
+  <span>系统</span>
+</div>
+
+<div class="container">
+  <!-- CPU 负载图 -->
+  <div class="card">
+    <div class="card-header">
+      <span>🖥️ CPU 负载 — 过去 24 小时</span>
+      <div class="time-tabs">
+        <span>1h</span>
+        <span>6h</span>
+        <span class="active">24h</span>
+        <span>7d</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container">
+        <svg viewBox="0 0 900 260" preserveAspectRatio="none">
+          <!-- Grid -->
+          <line x1="60" y1="20" x2="880" y2="20" class="grid-line"/>
+          <line x1="60" y1="68" x2="880" y2="68" class="grid-line"/>
+          <line x1="60" y1="116" x2="880" y2="116" class="grid-line"/>
+          <line x1="60" y1="164" x2="880" y2="164" class="grid-line"/>
+          <line x1="60" y1="212" x2="880" y2="212" class="grid-line"/>
+          <!-- Y axis labels -->
+          <text x="50" y="24" class="axis-label" text-anchor="end">80%</text>
+          <text x="50" y="72" class="axis-label" text-anchor="end">60%</text>
+          <text x="50" y="120" class="axis-label" text-anchor="end">40%</text>
+          <text x="50" y="168" class="axis-label" text-anchor="end">20%</text>
+          <text x="50" y="216" class="axis-label" text-anchor="end">0%</text>
+          <!-- X axis labels -->
+          <text x="60" y="245" class="axis-label">00:00</text>
+          <text x="197" y="245" class="axis-label">04:00</text>
+          <text x="335" y="245" class="axis-label">08:00</text>
+          <text x="472" y="245" class="axis-label">12:00</text>
+          <text x="610" y="245" class="axis-label">16:00</text>
+          <text x="747" y="245" class="axis-label">20:00</text>
+          <text x="860" y="245" class="axis-label">现在</text>
+
+          <!-- CPU Load area -->
+          <path class="chart-area" fill="#0a5c36" d="M60,200 L80,195 L100,198 L120,192 L140,196 L160,190 L180,188 L200,185 L220,190 L240,195 L260,188 L280,182 L300,175 L320,160 L340,140 L360,120 L380,105 L400,95 L420,88 L440,92 L460,100 L480,85 L500,78 L520,82 L540,90 L560,95 L580,88 L600,82 L620,78 L640,85 L660,92 L680,88 L700,80 L720,75 L740,82 L760,90 L780,85 L800,78 L820,82 L840,88 L860,85 L880,80 L880,212 L60,212 Z"/>
+
+          <!-- CPU Load line -->
+          <polyline class="chart-line" stroke="#0a5c36" points="60,200 80,195 100,198 120,192 140,196 160,190 180,188 200,185 220,190 240,195 260,188 280,182 300,175 320,160 340,140 360,120 380,105 400,95 420,88 440,92 460,100 480,85 500,78 520,82 540,90 560,95 580,88 600,82 620,78 640,85 660,92 680,88 700,80 720,75 740,82 760,90 780,85 800,78 820,82 840,88 860,85 880,80"/>
+
+          <!-- System Load area (higher) -->
+          <path class="chart-area" fill="#e67e22" d="M60,195 L80,190 L100,192 L120,185 L140,188 L160,180 L180,178 L200,172 L220,178 L240,185 L260,175 L280,168 L300,155 L320,135 L340,110 L360,90 L380,75 L400,62 L420,55 L440,60 L460,70 L480,52 L500,45 L520,50 L540,62 L560,68 L580,58 L600,50 L620,45 L640,55 L660,65 L680,58 L700,48 L720,42 L740,52 L760,62 L780,55 L800,48 L820,52 L840,58 L860,55 L880,50 L880,212 L60,212 Z"/>
+
+          <!-- System Load line -->
+          <polyline class="chart-line" stroke="#e67e22" points="60,195 80,190 100,192 120,185 140,188 160,180 180,178 200,172 220,178 240,185 260,175 280,168 300,155 320,135 340,110 360,90 380,75 400,62 420,55 440,60 460,70 480,52 500,45 520,50 540,62 560,68 580,58 600,50 620,45 640,55 660,65 680,58 700,48 720,42 740,52 760,62 780,55 800,48 820,52 840,58 860,55 880,50"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0a5c36"></div>CPU 使用率</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e67e22"></div>系统负载</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-value">12%</div>
+          <div class="stat-label">当前 CPU</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">0.15</div>
+          <div class="stat-label">平均负载</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">38%</div>
+          <div class="stat-label">峰值 (12:00)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">42MB</div>
+          <div class="stat-label">内存使用</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 接口流量图 -->
+  <div class="card">
+    <div class="card-header">
+      <span>📡 接口流量 — 过去 24 小时</span>
+      <div class="time-tabs">
+        <span>1h</span>
+        <span>6h</span>
+        <span class="active">24h</span>
+        <span>7d</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container">
+        <svg viewBox="0 0 900 260" preserveAspectRatio="none">
+          <!-- Grid -->
+          <line x1="60" y1="20" x2="880" y2="20" class="grid-line"/>
+          <line x1="60" y1="68" x2="880" y2="68" class="grid-line"/>
+          <line x1="60" y1="116" x2="880" y2="116" class="grid-line"/>
+          <line x1="60" y1="164" x2="880" y2="164" class="grid-line"/>
+          <line x1="60" y1="212" x2="880" y2="212" class="grid-line"/>
+          <text x="50" y="24" class="axis-label" text-anchor="end">50M</text>
+          <text x="50" y="72" class="axis-label" text-anchor="end">37M</text>
+          <text x="50" y="120" class="axis-label" text-anchor="end">25M</text>
+          <text x="50" y="168" class="axis-label" text-anchor="end">12M</text>
+          <text x="50" y="216" class="axis-label" text-anchor="end">0</text>
+          <text x="60" y="245" class="axis-label">00:00</text>
+          <text x="197" y="245" class="axis-label">04:00</text>
+          <text x="335" y="245" class="axis-label">08:00</text>
+          <text x="472" y="245" class="axis-label">12:00</text>
+          <text x="610" y="245" class="axis-label">16:00</text>
+          <text x="747" y="245" class="axis-label">20:00</text>
+          <text x="860" y="245" class="axis-label">现在</text>
+
+          <!-- Download area -->
+          <path class="chart-area" fill="#2ecc71" d="M60,190 L100,185 L140,188 L180,182 L220,178 L260,175 L300,155 L340,120 L380,95 L420,75 L460,68 L500,60 L540,55 L580,62 L620,70 L660,65 L700,58 L740,72 L780,80 L820,85 L860,78 L880,75 L880,212 L60,212 Z"/>
+          <polyline class="chart-line" stroke="#2ecc71" points="60,190 100,185 140,188 180,182 220,178 260,175 300,155 340,120 380,95 420,75 460,68 500,60 540,55 580,62 620,70 660,65 700,58 740,72 780,80 820,85 860,78 880,75"/>
+
+          <!-- Upload area -->
+          <path class="chart-area" fill="#3498db" d="M60,200 L100,198 L140,196 L180,195 L220,192 L260,190 L300,180 L340,165 L380,155 L420,145 L460,140 L500,135 L540,130 L580,138 L620,142 L660,135 L700,128 L740,138 L780,145 L820,148 L860,142 L880,140 L880,212 L60,212 Z"/>
+          <polyline class="chart-line" stroke="#3498db" points="60,200 100,198 140,196 180,195 220,192 260,190 300,180 340,165 380,155 420,145 460,140 500,135 540,130 580,138 620,142 660,135 700,128 740,138 780,145 820,148 860,142 880,140"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>下载 (WAN→LAN)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div>上传 (LAN→WAN)</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-value">7.2 GB</div>
+          <div class="stat-label">今日下载</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">782 MB</div>
+          <div class="stat-label">今日上传</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">42 Mbps</div>
+          <div class="stat-label">峰值速率</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">33 Mbps</div>
+          <div class="stat-label">平均速率</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">collectd + RRDtool · 每 30 秒采集 · LuCI Statistics Plugin</div>
+</div>
+
+</body>
+</html>

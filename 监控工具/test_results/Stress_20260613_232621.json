@@ -1,0 +1,115 @@
+{
+  "time": "2026-06-13 23:26:21",
+  "rounds": 30,
+  "capacity_mbps": 25.4,
+  "sites": [
+    {
+      "name": "Gateway",
+      "domain": "192.168.1.1",
+      "avg": 3.2,
+      "min": 1.7,
+      "max": 6.4,
+      "p50": 2.8,
+      "p95": 5.6,
+      "p99": 6.4,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Baidu",
+      "domain": "baidu.com",
+      "avg": 39.0,
+      "min": 30.3,
+      "max": 61.5,
+      "p50": 35.1,
+      "p95": 61.2,
+      "p99": 61.5,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Bilibili",
+      "domain": "bilibili.com",
+      "avg": 44.0,
+      "min": 32.8,
+      "max": 67.0,
+      "p50": 42.6,
+      "p95": 62.3,
+      "p99": 67.0,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "JD",
+      "domain": "jd.com",
+      "avg": 25.6,
+      "min": 17.6,
+      "max": 45.6,
+      "p50": 24.6,
+      "p95": 44.1,
+      "p99": 45.6,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Taobao",
+      "domain": "taobao.com",
+      "avg": 25.2,
+      "min": 18.8,
+      "max": 45.4,
+      "p50": 23.6,
+      "p95": 36.7,
+      "p99": 45.4,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Zhihu",
+      "domain": "zhihu.com",
+      "avg": 24.7,
+      "min": 16.1,
+      "max": 40.6,
+      "p50": 23.8,
+      "p95": 35.1,
+      "p99": 40.6,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "GitHub",
+      "domain": "github.com",
+      "avg": 314.2,
+      "min": 111.9,
+      "max": 2134.9,
+      "p50": 149.1,
+      "p95": 1165.9,
+      "p99": 2134.9,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Microsoft",
+      "domain": "microsoft.com",
+      "avg": 84.2,
+      "min": 73.2,
+      "max": 107.5,
+      "p50": 80.7,
+      "p95": 102.4,
+      "p99": 107.5,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Cloudflare",
+      "domain": "cloudflare.com",
+      "avg": 291.3,
+      "min": 213.3,
+      "max": 1256.6,
+      "p50": 233.4,
+      "p95": 459.8,
+      "p99": 1256.6,
+      "loss_pct": 3.3,
+      "samples": 29
+    }
+  ]
+}

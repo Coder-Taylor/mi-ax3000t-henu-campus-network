@@ -1,0 +1,79 @@
+{
+  "time": "2026-06-13 23:29:01",
+  "rounds": 30,
+  "capacity_mbps": 33.2,
+  "sites": [
+    {
+      "name": "Gateway",
+      "domain": "192.168.1.1",
+      "avg": 4.6,
+      "min": 1.8,
+      "max": 26.7,
+      "p50": 2.6,
+      "p95": 15.1,
+      "p99": 26.7,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Baidu",
+      "domain": "baidu.com",
+      "avg": 34.1,
+      "min": 28.1,
+      "max": 48.0,
+      "p50": 32.9,
+      "p95": 45.0,
+      "p99": 48.0,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Bilibili",
+      "domain": "bilibili.com",
+      "avg": 39.9,
+      "min": 31.3,
+      "max": 49.6,
+      "p50": 39.7,
+      "p95": 48.9,
+      "p99": 49.6,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "JD",
+      "domain": "jd.com",
+      "avg": 24.8,
+      "min": 16.4,
+      "max": 49.7,
+      "p50": 23.5,
+      "p95": 36.9,
+      "p99": 49.7,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Taobao",
+      "domain": "taobao.com",
+      "avg": 22.0,
+      "min": 15.8,
+      "max": 48.0,
+      "p50": 21.0,
+      "p95": 32.5,
+      "p99": 48.0,
+      "loss_pct": 0.0,
+      "samples": 30
+    },
+    {
+      "name": "Zhihu",
+      "domain": "zhihu.com",
+      "avg": 21.8,
+      "min": 15.7,
+      "max": 52.4,
+      "p50": 19.8,
+      "p95": 42.2,
+      "p99": 52.4,
+      "loss_pct": 0.0,
+      "samples": 30
+    }
+  ]
+}

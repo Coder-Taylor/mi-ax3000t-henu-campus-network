@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>流量监控 - LuCI</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; }
+.header { background: linear-gradient(135deg, #0a5c36 0%, #1a8a52 100%); color: white; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+.header img { height: 28px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header .subtitle { font-size: 12px; opacity: 0.8; margin-left: auto; }
+.nav { background: #fff; border-bottom: 1px solid #ddd; padding: 8px 24px; display: flex; gap: 4px; }
+.nav span { padding: 6px 14px; font-size: 13px; color: #666; cursor: pointer; border-radius: 4px; }
+.nav span.active { background: #0a5c36; color: white; }
+.container { max-width: 960px; margin: 16px auto; padding: 0 16px; }
+.card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; overflow: hidden; }
+.card-header { background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 600; color: #0a5c36; display: flex; align-items: center; gap: 8px; }
+.card-body { padding: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f0f7f3; color: #0a5c36; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 2px solid #0a5c36; }
+td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+tr:hover { background: #f8fdf9; }
+.bar-container { display: flex; align-items: center; gap: 6px; }
+.bar { height: 18px; border-radius: 3px; min-width: 4px; }
+.bar.down { background: linear-gradient(90deg, #0a5c36, #2ecc71); }
+.bar.up { background: linear-gradient(90deg, #2980b9, #3498db); }
+.text-right { text-align: right; }
+.text-muted { color: #999; font-size: 11px; }
+.total-row { font-weight: 600; background: #f8f9fa !important; }
+.total-row td { border-top: 2px solid #0a5c36; }
+.icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+.legend { display: flex; gap: 20px; font-size: 12px; color: #666; margin-bottom: 12px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 2px; display: inline-block; vertical-align: middle; margin-right: 4px; }
+.footer { text-align: center; color: #999; font-size: 11px; padding: 16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📶 OpenWrt</h1>
+  <span style="font-size:14px;opacity:0.9">Bandwidth Monitor</span>
+  <div class="subtitle">AX3000T · 192.168.1.1</div>
+</div>
+
+<div class="nav">
+  <span>概览</span>
+  <span class="active">📊 流量统计</span>
+  <span>实时监控</span>
+  <span>设置</span>
+</div>
+
+<div class="container">
+  <div class="card">
+    <div class="card-header">📊 设备流量统计 — 最近 24 小时</div>
+    <div class="card-body">
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#0a5c36"></span>下载</span>
+        <span><span class="legend-dot" style="background:#2980b9"></span>上传</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30%">设备名称</th>
+            <th>IP 地址</th>
+            <th class="text-right">下载</th>
+            <th style="width:25%">下载流量</th>
+            <th class="text-right">上传</th>
+            <th style="width:20%">上传流量</th>
+            <th class="text-right">合计</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>📱 手机</td>
+            <td class="text-muted">192.168.1.102</td>
+            <td class="text-right">2.34 GB</td>
+            <td><div class="bar-container"><div class="bar down" style="width:100%"></div></div></td>
+            <td class="text-right">186 MB</td>
+            <td><div class="bar-container"><div class="bar up" style="width:45%"></div></div></td>
+            <td class="text-right"><strong>2.52 GB</strong></td>
+          </tr>
+          <tr>
+            <td>💻 笔记本</td>
+            <td class="text-muted">192.168.1.105</td>
+            <td class="text-right">1.87 GB</td>
+            <td><div class="bar-container"><div class="bar down" style="width:80%"></div></div></td>
+            <td class="text-right">241 MB</td>
+            <td><div class="bar-container"><div class="bar up" style="width:58%"></div></div></td>
+            <td class="text-right"><strong>2.10 GB</strong></td>
+          </tr>
+          <tr>
+            <td>📺 平板</td>
+            <td class="text-muted">192.168.1.108</td>
+            <td class="text-right">1.52 GB</td>
+            <td><div class="bar-container"><div class="bar down" style="width:65%"></div></div></td>
+            <td class="text-right">98 MB</td>
+            <td><div class="bar-container"><div class="bar up" style="width:24%"></div></div></td>
+            <td class="text-right"><strong>1.62 GB</strong></td>
+          </tr>
+          <tr>
+            <td>🖥️ 台式机</td>
+            <td class="text-muted">192.168.1.103</td>
+            <td class="text-right">892 MB</td>
+            <td><div class="bar-container"><div class="bar down" style="width:38%"></div></div></td>
+            <td class="text-right">156 MB</td>
+            <td><div class="bar-container"><div class="bar up" style="width:38%"></div></div></td>
+            <td class="text-right"><strong>1.05 GB</strong></td>
+          </tr>
+          <tr>
+            <td>🎮 Switch</td>
+            <td class="text-muted">192.168.1.112</td>
+            <td class="text-right">456 MB</td>
+            <td><div class="bar-container"><div class="bar down" style="width:19%"></div></div></td>
+            <td class="text-right">67 MB</td>
+            <td><div class="bar-container"><div class="bar up" style="width:16%"></div></div></td>
+            <td class="text-right"><strong>523 MB</strong></td>
+          </tr>
+          <tr>
+            <td>📡 智能音箱</td>
+            <td class="text-muted">192.168.1.115</td>
+            <td class="text-right">128 MB</td>
+            <td><div class="bar-container"><div class="bar down" style="width:5%"></div></div></td>
+            <td class="text-right">34 MB</td>
+            <td><div class="bar-container"><div class="bar up" style="width:8%"></div></div></td>
+            <td class="text-right"><strong>162 MB</strong></td>
+          </tr>
+          <tr class="total-row">
+            <td>📊 合计</td>
+            <td></td>
+            <td class="text-right">7.21 GB</td>
+            <td></td>
+            <td class="text-right">782 MB</td>
+            <td></td>
+            <td class="text-right"><strong>7.99 GB</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">nlbwmon · 每 30 秒刷新 · 数据保留 24 小时 · LuCI Bandwidth Monitor</div>
+</div>
+
+</body>
+</html>

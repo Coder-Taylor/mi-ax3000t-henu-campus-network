@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Adblock - LuCI</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; }
+.header { background: linear-gradient(135deg, #0a5c36 0%, #1a8a52 100%); color: white; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header .subtitle { font-size: 12px; opacity: 0.8; margin-left: auto; }
+.nav { background: #fff; border-bottom: 1px solid #ddd; padding: 8px 24px; display: flex; gap: 4px; }
+.nav span { padding: 6px 14px; font-size: 13px; color: #666; cursor: pointer; border-radius: 4px; }
+.nav span.active { background: #0a5c36; color: white; }
+.container { max-width: 800px; margin: 16px auto; padding: 0 16px; }
+.card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; overflow: hidden; }
+.card-header { background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 600; color: #0a5c36; }
+.card-body { padding: 20px; }
+
+/* 大数字展示 */
+.big-number { text-align: center; padding: 30px 20px; }
+.big-number .number { font-size: 64px; font-weight: 800; color: #e74c3c; line-height: 1; }
+.big-number .unit { font-size: 20px; color: #666; margin-top: 4px; }
+.big-number .desc { font-size: 14px; color: #999; margin-top: 8px; }
+
+/* 状态指示 */
+.status-row { display: flex; gap: 16px; margin-bottom: 20px; }
+.status-card { flex: 1; background: #f8f9fa; border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid; }
+.status-card.active { border-color: #2ecc71; }
+.status-card.info { border-color: #3498db; }
+.status-card.warn { border-color: #f39c12; }
+.status-icon { font-size: 28px; margin-bottom: 6px; }
+.status-value { font-size: 22px; font-weight: 700; }
+.status-label { font-size: 11px; color: #999; margin-top: 2px; }
+
+/* 进度条 */
+.progress-bar { background: #e8e8e8; border-radius: 10px; height: 24px; overflow: hidden; margin: 12px 0; position: relative; }
+.progress-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, #2ecc71, #27ae60); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600; }
+
+/* 来源列表 */
+.source-list { list-style: none; }
+.source-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.source-list li:last-child { border-bottom: none; }
+.source-name { color: #333; }
+.source-count { color: #0a5c36; font-weight: 600; }
+.source-status { font-size: 16px; }
+
+/* 操作按钮 */
+.btn { display: inline-block; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+.btn-primary { background: #0a5c36; color: white; }
+.btn-secondary { background: #e8e8e8; color: #333; margin-left: 8px; }
+.btn-row { text-align: center; margin-top: 16px; }
+
+.footer { text-align: center; color: #999; font-size: 11px; padding: 16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📶 OpenWrt</h1>
+  <span style="font-size:14px;opacity:0.9">Adblock</span>
+  <div class="subtitle">AX3000T · 192.168.1.1</div>
+</div>
+
+<div class="nav">
+  <span>概览</span>
+  <span class="active">🛡️ 广告拦截</span>
+  <span>日志</span>
+  <span>设置</span>
+</div>
+
+<div class="container">
+  <!-- 核心数字 -->
+  <div class="card">
+    <div class="card-header">🛡️ Adblock 广告拦截状态</div>
+    <div class="card-body">
+      <div class="big-number">
+        <div class="number">185,435</div>
+        <div class="unit">个广告域名已拦截</div>
+        <div class="desc">来自 8 个域名列表 · 每日自动更新</div>
+      </div>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:99.96%">99.96% 拦截率</div>
+      </div>
+
+      <div class="status-row" style="margin-top:20px">
+        <div class="status-card active">
+          <div class="status-icon">✅</div>
+          <div class="status-value" style="color:#2ecc71">运行中</div>
+          <div class="status-label">Adblock 状态</div>
+        </div>
+        <div class="status-card info">
+          <div class="status-icon">📡</div>
+          <div class="status-value" style="color:#3498db">dnsmasq</div>
+          <div class="status-label">DNS 后端</div>
+        </div>
+        <div class="status-card warn">
+          <div class="status-icon">🔄</div>
+          <div class="status-value" style="color:#f39c12">今日</div>
+          <div class="status-label">上次更新</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 域名来源 -->
+  <div class="card">
+    <div class="card-header">📋 域名列表来源</div>
+    <div class="card-body">
+      <ul class="source-list">
+        <li>
+          <span class="source-name">adaway — 广告拦截基础列表</span>
+          <span class="source-count">4,217</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">adguard — AdGuard DNS 列表</span>
+          <span class="source-count">49,852</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">disconnect — Disconnect.me 恶意列表</span>
+          <span class="source-count">12,638</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">hagezi — Hagezi 多合一拦截</span>
+          <span class="source-count">87,241</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">stevenblack — StevenBlack 统一列表</span>
+          <span class="source-count">18,753</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">oisd — OISD 大型列表</span>
+          <span class="source-count">9,847</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">yoyo — Peter Lowe 广告列表</span>
+          <span class="source-count">2,102</span>
+          <span class="source-status">✅</span>
+        </li>
+        <li>
+          <span class="source-name">whocares — 卓越隐私追踪列表</span>
+          <span class="source-count">785</span>
+          <span class="source-status">✅</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary">🔄 立即更新列表</button>
+    <button class="btn btn-secondary">📋 查看拦截日志</button>
+  </div>
+
+  <div class="footer">Adblock · dnsmasq 后端 · 全设备自动生效 · 无需安装任何插件</div>
+</div>
+
+</body>
+</html>
