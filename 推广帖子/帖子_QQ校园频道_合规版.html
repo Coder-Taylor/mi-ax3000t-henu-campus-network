@@ -1,205 +1,311 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>宿舍WiFi太慢？—— 路由器改造方案</title>
-<style>
-  body {
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 20px;
-    color: #333;
-    line-height: 1.8;
-    background: #fff;
-  }
-  h1 { text-align: center; font-size: 24px; margin: 20px 0; }
-  h2 { font-size: 18px; margin: 24px 0 12px; }
-  p { margin: 8px 0; }
-  img { max-width: 100%; border-radius: 4px; margin: 12px 0; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
-  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-  th { background: #f5f5f5; }
-  hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
-  .center { text-align: center; }
-  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
-  .cta { text-align: center; margin: 24px 0; }
-  .cta a { display: inline-block; padding: 12px 32px; background: #1890ff; color: #fff; border-radius: 4px; text-decoration: none; font-size: 16px; }
-  .tags { text-align: center; margin: 16px 0; }
-  .tags span { display: inline-block; background: #f0f0f0; padding: 2px 10px; border-radius: 4px; font-size: 13px; color: #666; margin: 2px; }
-  .price { text-align: center; background: #f6ffed; border: 1px solid #b7eb8f; padding: 16px; border-radius: 4px; margin: 20px 0; }
-  .price .amount { font-size: 36px; font-weight: bold; color: #52c41a; }
-  .price .detail { font-size: 14px; color: #666; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宿舍WiFi太慢？—— 路由器改造方案</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html {
+            color-scheme: light;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #fff;
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        h1 {
+            font-size: 28px;
+            margin: 10px 0;
+            color: #1a1a1a;
+        }
+        h2 {
+            font-size: 18px;
+            font-weight: normal;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        h3 {
+            font-size: 20px;
+            margin: 30px 0 15px;
+            color: #1a1a1a;
+        }
+        p {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .tagline {
+            font-style: italic;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 25px 0;
+        }
+        img {
+            max-width: 100%;
+            width: 600px;
+            border-radius: 8px;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        table {
+            border-collapse: collapse;
+            margin: 15px auto;
+            width: auto;
+            min-width: 50%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px 16px;
+            text-align: center;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #fafafa;
+        }
+        .emoji-list {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .emoji-list div {
+            margin: 5px 0;
+        }
+        strong {
+            color: #1a1a1a;
+        }
+        .price-box {
+            background: #f8f9fa;
+            border: 2px solid #4CAF50;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 500px;
+        }
+        .price-box .price {
+            font-size: 32px;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .cta {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        @media print {
+            body {
+                max-width: 100%;
+                padding: 20px;
+            }
+            img {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+            table {
+                page-break-inside: avoid;
+            }
+            hr {
+                border-top: 1px solid #ccc;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<div class="center">
-<p><i>—— 一台路由器，解决宿舍上网所有烦恼 ——</i></p>
-</div>
+    <p class="tagline">—— 一台路由器，解决宿舍上网所有烦恼 ——</p>
 
-<h1>宿舍WiFi太慢？你想拥有更快的网速吗？</h1>
+    <h1>宿舍WiFi太慢？<br>你想拥有更快的网速吗？</h1>
 
-<hr>
+    <h2>路由器改造方案</h2>
 
-<h2>📡 路由器实物</h2>
+    <hr>
 
-<img src="img/1.png" width="600">
+    <!-- 1. 路由器实物 -->
+    <h3>📡 路由器实物</h3>
 
-<p>我花了一周，从零折腾了一台小米 AX3000T 路由器，刷了开源固件，让它变成宿舍的"专属基站"。</p>
+    <img src="img/1.png" alt="路由器实物">
 
-<p>WiFi6 协议，双频 2.4G + 5G，四根天线信号覆盖整个宿舍。</p>
+    <p>我花了一周，从零折腾了一台小米 AX3000T 路由器，刷了开源固件，让它变成宿舍的"专属基站"。</p>
 
-<hr>
+    <p>WiFi6 协议，双频 2.4G + 5G，四根天线信号覆盖整个宿舍。</p>
 
-<h2>⚡ 实测网速</h2>
+    <hr>
 
-<img src="img/2.png" width="600">
+    <!-- 2. 测速截图 -->
+    <h3>⚡ 实测网速</h3>
 
-<p>实测下载速度 <strong>12.8MB/s</strong>，换算成带宽就是 <strong>102Mbps</strong>，跑满了校园网的百兆上限。</p>
+    <img src="img/2.png" alt="测速截图 12.8MB/s" style="width: 400px;">
 
-<p>🎵 一秒下载一首歌<br>
-📺 三秒下载一集电视剧<br>
-🎮 打游戏延迟稳定，不会突然卡顿<br>
-📱 多人同时刷视频，互不影响</p>
+    <p>实测下载速度 <strong>12.8MB/s</strong>，换算成带宽就是 <strong>102Mbps</strong>，跑满了校园网的百兆上限。</p>
 
-<hr>
+    <p>这是什么概念？</p>
 
-<h2>📱 连上就能用</h2>
+    <div class="emoji-list">
+        <div>🎵 一秒下载一首歌</div>
+        <div>📺 三秒下载一集电视剧</div>
+        <div>🎮 打游戏延迟稳定，不会突然卡顿</div>
+        <div>📱 多人同时刷视频，互不影响</div>
+    </div>
 
-<img src="img/3.png" width="600">
+    <hr>
 
-<p><strong>连上WiFi就能用，不用打开浏览器，不用手动登录。</strong></p>
+    <!-- 3. WiFi 连接 -->
+    <h3>📱 连上就能用</h3>
 
-<p>掉线了自动重连，你甚至感觉不到中间断过。</p>
+    <img src="img/3.png" alt="WiFi 连接详情" style="width: 300px;">
 
-<hr>
+    <p><strong>连上WiFi就能用，不用打开浏览器，不用手动登录。</strong></p>
 
-<h2>🔧 踩过的坑，都解决了</h2>
+    <p>掉线了自动重连，你甚至感觉不到中间断过。</p>
 
-<img src="img/4.png" width="600">
+    <hr>
 
-<p>折腾过程中踩了不少坑，每一个都是实打实解决的：</p>
+    <!-- 4 & 5. 踩坑 -->
+    <h3>🔧 踩过的坑，都解决了</h3>
 
-<table>
-<tr><th>问题</th><th>具体表现</th><th>状态</th></tr>
-<tr><td>设备重连会断网</td><td>室友手机重连WiFi，全宿舍断网</td><td>✅ 已修复</td></tr>
-<tr><td>断网恢复慢</td><td>恢复要等20秒</td><td>✅ 优化到1秒</td></tr>
-<tr><td>校园网站打不开</td><td>教务系统、图书馆加载失败</td><td>✅ 已修复</td></tr>
-<tr><td>一人下载全宿舍卡</td><td>室友下东西，我打游戏卡死</td><td>✅ 智能分配</td></tr>
-<tr><td>广告太多</td><td>网页弹窗、视频广告烦人</td><td>✅ 自动屏蔽</td></tr>
-</table>
+    <img src="img/4.png" alt="管理界面">
 
-<img src="img/5.png" width="600">
+    <p>折腾过程中踩了不少坑，每一个都是实打实解决的：</p>
 
-<p>这些问题花了好几天才全部搞定，但现在都稳定解决了。<strong>你踩过的坑，别人不用再踩。</strong></p>
+    <table>
+        <tr><th>问题</th><th>具体表现</th><th>状态</th></tr>
+        <tr><td>设备重连会断网</td><td>室友手机重连WiFi，全宿舍断网</td><td>✅ 已修复</td></tr>
+        <tr><td>断网恢复慢</td><td>恢复要等20秒</td><td>✅ 优化到1秒</td></tr>
+        <tr><td>校园网站打不开</td><td>教务系统、图书馆加载失败</td><td>✅ 已修复</td></tr>
+        <tr><td>一人下载全宿舍卡</td><td>室友下东西，我打游戏卡死</td><td>✅ 智能分配</td></tr>
+        <tr><td>广告太多</td><td>网页弹窗、视频广告烦人</td><td>✅ 自动屏蔽</td></tr>
+    </table>
 
-<hr>
+    <img src="img/5.png" alt="管理界面详情">
 
-<h2>📊 稳定性验证</h2>
+    <p>这些问题花了好几天才全部搞定，但现在都稳定解决了。<strong>你踩过的坑，别人不用再踩。</strong></p>
 
-<img src="img/6.png" width="600">
+    <hr>
 
-<p><strong>9 个常用网站 × 30 轮连续访问测试，全部通过，成功率 100%。</strong></p>
+    <!-- 6. 压力测试 -->
+    <h3>📊 稳定性验证</h3>
 
-<p>测的都是真实场景：百度、B站、教务系统、图书馆……不是实验室数据，是真实能用。</p>
+    <img src="img/6.png" alt="压力测试结果">
 
-<hr>
+    <p><strong>9 个常用网站 × 30 轮连续访问测试，全部通过，成功率 100%。</strong></p>
 
-<h2>🔌 有线扩展</h2>
+    <p>测的都是真实场景：百度、B站、教务系统、图书馆……不是实验室数据，是真实能用。</p>
 
-<img src="img/7.png" width="600">
+    <hr>
 
-<p>路由器背面有 LAN 口，台式机、游戏主机、网络打印机都可以直接插网线。</p>
+    <!-- 7. 网口实拍 -->
+    <h3>🔌 有线扩展</h3>
 
-<p>有线连接比 WiFi 更稳定，延迟更低，打游戏的同学可以优先考虑。</p>
+    <img src="img/7.png" alt="路由器网口实拍">
 
-<hr>
+    <p>路由器背面有 LAN 口，台式机、游戏主机、网络打印机都可以直接插网线。</p>
 
-<h2>📶 WiFi6 极速连接</h2>
+    <p>有线连接比 WiFi 更稳定，延迟更低，打游戏的同学可以优先考虑。</p>
 
-<img src="img/9.png" width="600">
+    <hr>
 
-<p>WiFi6 协议，连接速率 <strong>1200Mbps</strong>，实际跑满校园网百兆带宽。</p>
+    <!-- 8. WiFi6 速率 -->
+    <h3>📶 WiFi6 极速连接</h3>
 
-<p>比普通 WiFi5 路由器快 2.4 倍，信号更强，穿墙更好，多人同时连接不卡顿。</p>
+    <img src="img/9.png" alt="宿舍实拍">
 
-<p>四根天线，5GHz + 2.4GHz 双频并发，宿舍每个角落都有信号。</p>
+    <p>WiFi6 协议，连接速率 <strong>1200Mbps</strong>，实际跑满校园网百兆带宽。</p>
 
-<hr>
+    <p>比普通 WiFi5 路由器快 2.4 倍，信号更强，穿墙更好，多人同时连接不卡顿。</p>
 
-<h2>📡 双频分工：5G 上网 + 2.4G 智能家居</h2>
+    <p>四根天线，5GHz + 2.4GHz 双频并发，宿舍每个角落都有信号。</p>
 
-<table>
-<tr><th>频段</th><th>用途</th><th>优势</th></tr>
-<tr><td><strong>5GHz</strong></td><td>手机、电脑上网主力</td><td>速度快，跑满百兆，延迟低</td></tr>
-<tr><td><strong>2.4GHz</strong></td><td>智能家居设备</td><td>穿墙好，覆盖广，兼容性强</td></tr>
-</table>
+    <hr>
 
-<p>智能灯、智能音箱、智能插座、摄像头——全连 2.4G，不影响 5G 的网速。</p>
+    <!-- 双频分工 -->
+    <h3>📡 双频分工：5G 上网 + 2.4G 智能家居</h3>
 
-<p><strong>宿舍秒变智能宿舍。</strong></p>
+    <p>这台路由器有两个频段，各有分工：</p>
 
-<hr>
+    <table>
+        <tr><th>频段</th><th>用途</th><th>优势</th></tr>
+        <tr><td><strong>5GHz</strong></td><td>手机、电脑上网主力</td><td>速度快，跑满百兆，延迟低</td></tr>
+        <tr><td><strong>2.4GHz</strong></td><td>智能家居设备</td><td>穿墙好，覆盖广，兼容性强</td></tr>
+    </table>
 
-<h2>✅ 最终能做到的事</h2>
+    <p>智能灯、智能音箱、智能插座、摄像头——全连 2.4G，不影响 5G 的网速。</p>
 
-<table>
-<tr><th>功能</th><th>说明</th></tr>
-<tr><td>🔌 插电就能用</td><td>不需要操心任何东西</td></tr>
-<tr><td>🚀 连上WiFi就能用</td><td>不用手动登录，掉线自动重连</td></tr>
-<tr><td>⚡ 百兆跑满</td><td>智能分配带宽</td></tr>
-<tr><td>🎮 一人下载不影响其他人</td><td>各用各的</td></tr>
-<tr><td>🔄 断网1秒自动恢复</td><td>你甚至感觉不到</td></tr>
-<tr><td>🚫 广告屏蔽</td><td>全设备自动生效</td></tr>
-<tr><td>📚 教务系统、图书馆正常访问</td><td>校园内部网站无障碍</td></tr>
-<tr><td>🔗 台式机可以插网线</td><td>游戏主机也能用</td></tr>
-<tr><td>🏠 2.4G 支持智能家居</td><td>智能灯、音箱、插座</td></tr>
-<tr><td>📊 流量监控</td><td>每台设备用了多少一目了然</td></tr>
-<tr><td>📈 性能监控</td><td>CPU、内存、延迟长期记录</td></tr>
-</table>
+    <p><strong>宿舍秒变智能宿舍。</strong></p>
 
-<hr>
+    <hr>
 
-<h2>⚖️ 自己搞 vs 找我装</h2>
+    <!-- 功能列表 -->
+    <h3>✅ 最终能做到的事</h3>
 
-<table>
-<tr><th>对比项</th><th>自己搞</th><th>找我装</th></tr>
-<tr><td>技术门槛</td><td>需要 Linux、网络基础</td><td>不需要任何技术</td></tr>
-<tr><td>时间成本</td><td>花一周时间</td><td>半天搞定</td></tr>
-<tr><td>踩坑数量</td><td>9+ 个坑，每个都要排查</td><td>坑都踩过了，直接跳过</td></tr>
-<tr><td>成功率</td><td>可能搞不定</td><td>保证能用</td></tr>
-<tr><td>售后支持</td><td>出问题自己查</td><td>有问题随时联系</td></tr>
-</table>
+    <table>
+        <tr><th>功能</th><th>说明</th></tr>
+        <tr><td>🔌 插电就能用</td><td>不需要操心任何东西</td></tr>
+        <tr><td>🚀 连上WiFi就能用</td><td>不用手动登录，掉线自动重连</td></tr>
+        <tr><td>⚡ 百兆跑满</td><td>智能分配带宽</td></tr>
+        <tr><td>🎮 一人下载不影响其他人</td><td>各用各的</td></tr>
+        <tr><td>🔄 断网1秒自动恢复</td><td>你甚至感觉不到</td></tr>
+        <tr><td>🚫 广告屏蔽</td><td>全设备自动生效</td></tr>
+        <tr><td>📚 教务系统、图书馆正常访问</td><td>校园内部网站无障碍</td></tr>
+        <tr><td>🔗 台式机可以插网线</td><td>游戏主机也能用</td></tr>
+        <tr><td>🏠 2.4G 支持智能家居</td><td>智能灯、音箱、插座</td></tr>
+        <tr><td>📊 流量监控</td><td>每台设备用了多少一目了然</td></tr>
+        <tr><td>📈 性能监控</td><td>CPU、内存、延迟长期记录</td></tr>
+    </table>
 
-<hr>
+    <hr>
 
-<div class="price">
-  <div class="amount">¥150</div>
-  <div class="detail">全套服务：路由器 + 刷机 + 全套配置 + 测试 + 教你用</div>
-  <div class="detail">四人平摊，每人 ¥37.5，每月每人不到 ¥10</div>
-</div>
+    <!-- 对比 -->
+    <h3>⚖️ 自己搞 vs 找我装</h3>
 
-<p>自己从零搞需要折腾一周，找我装半天就能用，包售后。</p>
+    <table>
+        <tr><th>对比项</th><th>自己搞</th><th>找我装</th></tr>
+        <tr><td>技术门槛</td><td>需要 Linux、网络基础</td><td>不需要任何技术</td></tr>
+        <tr><td>时间成本</td><td>花一周时间</td><td>半天搞定</td></tr>
+        <tr><td>踩坑数量</td><td>9+ 个坑，每个都要排查</td><td>坑都踩过了，直接跳过</td></tr>
+        <tr><td>成功率</td><td>可能搞不定</td><td>保证能用</td></tr>
+        <tr><td>售后支持</td><td>出问题自己查</td><td>有问题随时联系</td></tr>
+    </table>
 
-<p>你只需要提供校园网账号密码，剩下的我来搞定。</p>
+    <hr>
 
-<hr>
+    <!-- 价格 -->
+    <h3>💰 装机服务</h3>
 
-<div class="cta">
-  <a href="#">有需要的同学可以私我哦~ 😘</a>
-</div>
+    <div class="price-box">
+        <p class="price">¥150</p>
+        <p>全套服务：路由器 + 刷机 + 全套配置 + 测试 + 教你用</p>
+        <p>四人平摊，每人 ¥37.5，每月每人不到 ¥10</p>
+    </div>
 
-<div class="tags">
-  <span>#校园网</span>
-  <span>#路由器</span>
-  <span>#大学生省钱</span>
-  <span>#宿舍神器</span>
-  <span>#WiFi6</span>
-  <span>#河大</span>
-  <span>#开学必备</span>
-</div>
+    <p style="font-size: 18px;">自己从零搞需要折腾一周，找我装半天就能用，包售后。</p>
+
+    <p style="font-size: 18px;">你只需要提供校园网账号密码，剩下的我来搞定。</p>
+
+    <hr>
+
+    <p style="font-size: 20px;"><strong>有需要的同学可以私我哦~😘</strong></p>
 
 </body>
 </html>
