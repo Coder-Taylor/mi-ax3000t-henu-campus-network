@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宿舍WiFi太慢？—— 路由器改造方案</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.8;
+  }
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px 16px;
+  }
+  .hero {
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    color: white;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  .hero p {
+    font-size: 16px;
+    opacity: 0.9;
+  }
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+  }
+  .card p {
+    font-size: 15px;
+    color: #555;
+    margin-bottom: 12px;
+  }
+  .card img {
+    width: 100%;
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+  .highlight-box {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 20px 24px;
+    border-radius: 12px;
+    margin: 20px 0;
+    text-align: center;
+  }
+  .highlight-box .number {
+    font-size: 36px;
+    font-weight: 800;
+  }
+  .highlight-box .label {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .stat-item {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-item .value {
+    font-size: 24px;
+    font-weight: 800;
+    color: #667eea;
+  }
+  .stat-item .desc {
+    font-size: 13px;
+    color: #888;
+    margin-top: 4px;
+  }
+  .feature-list {
+    list-style: none;
+    padding: 0;
+  }
+  .feature-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+  }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .icon {
+    font-size: 20px;
+    width: 32px;
+    text-align: center;
+  }
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .comparison-table th {
+    background: #667eea;
+    color: white;
+    padding: 12px;
+    text-align: left;
+  }
+  .comparison-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .comparison-table tr:nth-child(even) { background: #f8f9fa; }
+  .price-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 28px;
+    border-radius: 16px;
+    text-align: center;
+    margin: 24px 0;
+  }
+  .price-card .price {
+    font-size: 48px;
+    font-weight: 800;
+  }
+  .price-card .unit {
+    font-size: 18px;
+    opacity: 0.8;
+  }
+  .price-card .detail {
+    font-size: 14px;
+    opacity: 0.7;
+    margin-top: 8px;
+  }
+  .cta {
+    display: block;
+    background: #ff6b6b;
+    color: white;
+    text-align: center;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    text-decoration: none;
+    margin: 24px 0;
+    transition: transform 0.2s;
+  }
+  .cta:hover { transform: scale(1.02); }
+  .divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 24px 0;
+  }
+  .footer {
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    padding: 20px 0;
+  }
+  .tag {
+    display: inline-block;
+    background: #e8eaf6;
+    color: #667eea;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>宿舍WiFi太慢？<br>你想拥有更快的网速吗？</h1>
+    <p>一台路由器，解决宿舍上网所有烦恼</p>
+  </div>
+
+  <!-- 路由器实物 -->
+  <div class="card">
+    <h2>📡 路由器实物</h2>
+    <img src="img/1.png" alt="路由器实物">
+    <p>我花了一周，从零折腾了一台小米 AX3000T 路由器，刷了开源固件，让它变成宿舍的"专属基站"。</p>
+    <p>WiFi6 协议，双频 2.4G + 5G，四根天线信号覆盖整个宿舍。</p>
+  </div>
+
+  <!-- 实测网速 -->
+  <div class="card">
+    <h2>⚡ 实测网速</h2>
+    <img src="img/2.png" alt="测速截图">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="value">12.8</div>
+        <div class="desc">MB/s 下载速度</div>
+      </div>
+      <div class="stat-item">
+        <div class="value">102</div>
+        <div class="desc">Mbps 带宽</div>
+      </div>
+    </div>
+    <p>🎵 一秒下载一首歌<br>📺 三秒下载一集电视剧<br>🎮 打游戏延迟稳定<br>📱 多人同时刷视频，互不影响</p>
+  </div>
+
+  <!-- 连上就能用 -->
+  <div class="card">
+    <h2>📱 连上就能用</h2>
+    <img src="img/3.png" alt="WiFi连接">
+    <p><strong>连上WiFi就能用，不用打开浏览器，不用手动登录。</strong></p>
+    <p>掉线了自动重连，你甚至感觉不到中间断过。</p>
+  </div>
+
+  <!-- 踩过的坑 -->
+  <div class="card">
+    <h2>🔧 踩过的坑，都解决了</h2>
+    <img src="img/4.png" alt="管理界面">
+    <p>折腾过程中踩了不少坑，每一个都是实打实解决的：</p>
+    <table class="comparison-table">
+      <tr><th>问题</th><th>具体表现</th><th>状态</th></tr>
+      <tr><td>设备重连会断网</td><td>室友手机重连WiFi，全宿舍断网</td><td>✅ 已修复</td></tr>
+      <tr><td>断网恢复慢</td><td>恢复要等20秒</td><td>✅ 优化到1秒</td></tr>
+      <tr><td>校园网站打不开</td><td>教务系统、图书馆加载失败</td><td>✅ 已修复</td></tr>
+      <tr><td>一人下载全宿舍卡</td><td>室友下东西，我打游戏卡死</td><td>✅ 智能分配</td></tr>
+      <tr><td>广告太多</td><td>网页弹窗、视频广告烦人</td><td>✅ 自动屏蔽</td></tr>
+    </table>
+    <img src="img/5.png" alt="管理详情">
+    <p><strong>你踩过的坑，别人不用再踩。</strong></p>
+  </div>
+
+  <!-- 稳定性验证 -->
+  <div class="card">
+    <h2>📊 稳定性验证</h2>
+    <img src="img/6.png" alt="压力测试">
+    <p><strong>9 个常用网站 × 30 轮连续访问测试，全部通过，成功率 100%。</strong></p>
+    <p>测的都是真实场景：百度、B站、教务系统、图书馆……不是实验室数据，是真实能用。</p>
+  </div>
+
+  <!-- 有线扩展 -->
+  <div class="card">
+    <h2>🔌 有线扩展</h2>
+    <img src="img/7.png" alt="网口实拍">
+    <p>路由器背面有 LAN 口，台式机、游戏主机、网络打印机都可以直接插网线。</p>
+    <p>有线连接比 WiFi 更稳定，延迟更低，打游戏的同学可以优先考虑。</p>
+  </div>
+
+  <!-- WiFi6 -->
+  <div class="card">
+    <h2>📶 WiFi6 极速连接</h2>
+    <img src="img/9.png" alt="路由器实物">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="value">1200</div>
+        <div class="desc">Mbps 连接速率</div>
+      </div>
+      <div class="stat-item">
+        <div class="value">2.4x</div>
+        <div class="desc">比WiFi5快</div>
+      </div>
+    </div>
+    <p>四根天线，5GHz + 2.4GHz 双频并发，宿舍每个角落都有信号。</p>
+  </div>
+
+  <!-- 双频分工 -->
+  <div class="card">
+    <h2>📡 双频分工</h2>
+    <table class="comparison-table">
+      <tr><th>频段</th><th>用途</th><th>优势</th></tr>
+      <tr><td><b>5GHz</b></td><td>手机、电脑上网主力</td><td>速度快，跑满百兆，延迟低</td></tr>
+      <tr><td><b>2.4GHz</b></td><td>智能家居设备</td><td>穿墙好，覆盖广，兼容性强</td></tr>
+    </table>
+    <p>智能灯、智能音箱、智能插座、摄像头——全连 2.4G，不影响 5G 的网速。</p>
+    <p><strong>宿舍秒变智能宿舍。</strong></p>
+  </div>
+
+  <!-- 功能清单 -->
+  <div class="card">
+    <h2>✅ 最终能做到的事</h2>
+    <ul class="feature-list">
+      <li><span class="icon">🔌</span> <span>插电就能用，不需要操心任何东西</span></li>
+      <li><span class="icon">🚀</span> <span>连上WiFi就能用，不用手动登录</span></li>
+      <li><span class="icon">⚡</span> <span>百兆跑满，智能分配带宽</span></li>
+      <li><span class="icon">🎮</span> <span>一人下载不影响其他人</span></li>
+      <li><span class="icon">🔄</span> <span>断网1秒自动恢复，你感觉不到</span></li>
+      <li><span class="icon">🚫</span> <span>广告屏蔽，全设备自动生效</span></li>
+      <li><span class="icon">📚</span> <span>教务系统、图书馆正常访问</span></li>
+      <li><span class="icon">🔗</span> <span>台式机、游戏主机可以插网线</span></li>
+      <li><span class="icon">🏠</span> <span>2.4G 支持智能家居</span></li>
+      <li><span class="icon">📊</span> <span>流量监控，每台设备一目了然</span></li>
+      <li><span class="icon">📈</span> <span>性能监控，CPU/内存/延迟长期记录</span></li>
+    </ul>
+  </div>
+
+  <!-- 自己搞 vs 找我装 -->
+  <div class="card">
+    <h2>⚖️ 自己搞 vs 找我装</h2>
+    <table class="comparison-table">
+      <tr><th>对比项</th><th>自己搞</th><th>找我装</th></tr>
+      <tr><td>技术门槛</td><td>需要Linux、网络基础</td><td>不需要任何技术</td></tr>
+      <tr><td>时间成本</td><td>花一周时间</td><td>半天搞定</td></tr>
+      <tr><td>踩坑数量</td><td>9+ 个坑，每个都要排查</td><td>坑都踩过了，直接跳过</td></tr>
+      <tr><td>成功率</td><td>可能搞不定</td><td>保证能用</td></tr>
+      <tr><td>售后支持</td><td>出问题自己查</td><td>有问题随时联系</td></tr>
+    </table>
+  </div>
+
+  <!-- 价格 -->
+  <div class="price-card">
+    <div class="price">¥150</div>
+    <div class="unit">全套服务</div>
+    <div class="detail">路由器 + 刷机 + 全套配置 + 测试 + 教你用</div>
+    <div class="detail" style="margin-top: 12px; font-size: 16px; opacity: 1;">
+      四人平摊，每人 ¥37.5<br>
+      <span style="font-size: 20px; font-weight: 700;">每月每人不到 ¥10</span>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <a class="cta" href="#">有需要的同学可以私我哦~ 😘</a>
+
+  <!-- 标签 -->
+  <div style="text-align: center; margin: 16px 0;">
+    <span class="tag">#校园网</span>
+    <span class="tag">#路由器</span>
+    <span class="tag">#大学生省钱</span>
+    <span class="tag">#宿舍神器</span>
+    <span class="tag">#WiFi6</span>
+    <span class="tag">#河大</span>
+    <span class="tag">#开学必备</span>
+  </div>
+
+  <div class="footer">
+    <p>自己从零搞需要折腾一周，找我装半天就能用，包售后。</p>
+    <p>你只需要提供校园网账号密码，剩下的我来搞定。</p>
+  </div>
+
+</div>
+</body>
+</html>
