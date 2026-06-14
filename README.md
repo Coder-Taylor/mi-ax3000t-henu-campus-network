@@ -128,6 +128,8 @@ AX3000T刷机校园网/
 | 域名 | DNS 策略 |
 |------|----------|
 | `zwyy.henu.edu.cn` | → 114.114.114.114 |
+| `software.henu.edu.cn` | → 114.114.114.114 |
+| `net.henu.edu.cn` | → 172.31.7.4（内网） |
 | `jwgl.henu.edu.cn` | → 111.6.174.198 |
 | `xg.henu.edu.cn` | → 114.114.114.114 |
 | `lib.henu.edu.cn` | 均可 |
