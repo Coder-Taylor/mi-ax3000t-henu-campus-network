@@ -657,6 +657,20 @@ step5_dns() {
         step_ok "/etc/hosts: zwyy.henu.edu.cn → 202.196.96.29"
     fi
 
+    if grep -q 'software.henu.edu.cn' /etc/hosts; then
+        step_info "/etc/hosts: software 已存在"
+    else
+        echo '58.212.123.41 software.henu.edu.cn' >> /etc/hosts
+        step_ok "/etc/hosts: software.henu.edu.cn → 58.212.123.41"
+    fi
+
+    if grep -q 'net.henu.edu.cn' /etc/hosts; then
+        step_info "/etc/hosts: net 已存在"
+    else
+        echo '172.31.7.4 net.henu.edu.cn' >> /etc/hosts
+        step_ok "/etc/hosts: net.henu.edu.cn → 172.31.7.4"
+    fi
+
     # Fix 2: Per-domain DNS forwarding
     for item in "xg.henu.edu.cn:114.114.114.114" "jwgl.henu.edu.cn:111.6.174.198"; do
         domain=${item%%:*}

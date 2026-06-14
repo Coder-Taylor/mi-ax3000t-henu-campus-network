@@ -601,6 +601,8 @@ def deploy_dns_fix():
 
     问题1: 校园 DHCP DNS (111.6.174.198) 对某些域名返回不可达IP
            zwyy.henu.edu.cn → 125.219.33.206 (不可达)  → hosts写死 + 114 DNS
+           software.henu.edu.cn → 解析为空    (不可达)  → hosts写死
+           net.henu.edu.cn  → 58.212.123.41 (公网不可达) → hosts写死 172.31.7.4(内网)
            xg.henu.edu.cn   → 172.31.0.6     (不可达)  → 114 DNS
            jwgl.henu.edu.cn → 211.142.109.84 (不可达)  → campus DNS
 
@@ -616,7 +618,8 @@ def deploy_dns_fix():
 
     # Fix 1: /etc/hosts 静态解析 (最可靠, 不依赖DNS)
     for domain, ip in [("zwyy.henu.edu.cn", "202.196.96.29"),
-                        ("software.henu.edu.cn", "58.212.123.41")]:
+                        ("software.henu.edu.cn", "58.212.123.41"),
+                        ("net.henu.edu.cn", "172.31.7.4")]:
         ok_r, out = ssh.run(
             f"grep -q '{domain}' /etc/hosts && echo EXISTS", timeout=5)
         if not (ok_r and "EXISTS" in out):
