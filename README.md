@@ -52,7 +52,7 @@ cat /tmp/campus_network.log
 
 ```cmd
 # 双击启动实时监控（0.5 秒刷新 + 折线图）
-监控工具\start.bat
+监控工具\!MONITOR.bat
 ```
 
 ---
@@ -70,19 +70,21 @@ AX3000T刷机校园网/
 │   ├── 开发日志_按日期.md           ← 开发过程（按日期，快速查阅）
 │   ├── 脚本使用教程.md             ← 脚本+监控工具说明
 │   ├── 路由器当前状态.md           ← 路由器配置快照
+│   ├── convert_to_html.py         ← 开发日志转 HTML 工具
 │   └── AX3000T校园网项目_完整学习笔记.html  ← 可打印的 HTML 学习笔记
 │
 ├── 一键配置脚本/
-│   ├── !START_CONFIG.bat           ← Windows 双击启动配置菜单
+│   ├── !START.bat                  ← Windows 双击启动配置菜单
+│   ├── deploy.py                   ← 一键部署工具 v3.0（懒人模式）
 │   ├── auto_config.sh              ← 路由器一键配置
-│   ├── fast_recovery_daemon.sh     ← 快速恢复守护进程
+│   ├── fast_recovery_daemon.sh     ← 快速恢复守护进程 v2.0
 │   └── dns_fix.sh                  ← 校园内部网站 DNS 修复
 │
 ├── 监控工具/
 │   ├── !MONITOR.bat                ← 双击打开监控菜单
-│   ├── Monitor.ps1                 ← 实时监控（0.5 秒刷新，折线图）
-│   ├── StressTest.ps1              ← 压力测试（14 站点 × 30 轮）
-│   └── Compare.ps1                 ← 对比两次测试结果
+│   ├── monitor.py                  ← 实时监控 + 压力测试 + 对比（Python 三合一）
+│   ├── gen_stress_image.py         ← 压力测试结果图表生成
+│   └── test_results/               ← 自动保存的 JSON 测试数据
 │
 └── 小米AX3000T刷机教程openwrt大分区版/
     ├── step1解锁ssh/               ← 解锁 SSH 工具

@@ -116,20 +116,22 @@ AX3000T刷机校园网/
 │   ├── 开发日志.md                 ← 完整开发过程记录（按 Phase，教学级）
 │   ├── 开发日志_按日期.md           ← 开发过程记录（按日期，快速查阅）
 │   ├── 脚本使用教程.md             ← 脚本+监控工具说明
-│   └── 路由器当前状态.md           ← 路由器配置快照
+│   ├── 路由器当前状态.md           ← 路由器配置快照
+│   ├── convert_to_html.py         ← 开发日志转 HTML 工具
+│   └── AX3000T校园网项目_完整学习笔记.html ← 可打印的 HTML 学习笔记
 │
 ├── 一键配置脚本/                   ← 路由器配置工具
-│   ├── !START_CONFIG.bat          ← 双击启动配置菜单
+│   ├── !START.bat                 ← 双击启动配置菜单
+│   ├── deploy.py                  ← 一键部署工具 v3.0（懒人模式）
 │   ├── auto_config.sh             ← 路由器一键配置脚本
-│   ├── auto_config_menu.py        ← 配置菜单 Python 版
-│   └── fast_recovery_daemon.sh    ← 快速恢复守护进程（秒级断网恢复）
+│   ├── fast_recovery_daemon.sh    ← 快速恢复守护进程 v2.0（秒级断网恢复）
+│   └── dns_fix.sh                 ← 校园内部网站 DNS 修复脚本
 │
 ├── 监控工具/                       ← 网络监控工具
-│   ├── start.bat                  ← 双击打开监控菜单
-│   ├── Monitor.ps1                ← 实时监控（0.5秒刷新，折线图）
-│   ├── StressTest.ps1             ← 压力测试（14站点×30轮）
-│   ├── Compare.ps1                ← 对比两次测试结果
-│   └── 测试记录/                   ← 自动保存的测试数据
+│   ├── !MONITOR.bat               ← 双击打开监控菜单
+│   ├── monitor.py                 ← 实时监控 + 压力测试 + 对比（Python 三合一）
+│   ├── gen_stress_image.py        ← 压力测试结果图表生成
+│   └── test_results/              ← 自动保存的 JSON 测试数据
 │
 ├── .ssh/                           ← SSH 配置和密钥
 ├── .claude/                        ← Claude Code 设置
