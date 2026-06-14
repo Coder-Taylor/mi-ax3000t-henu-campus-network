@@ -5,494 +5,191 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>宿舍WiFi太慢？路由器改造方案</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: #000;
-    color: #fff;
-    line-height: 1.6;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px;
+    color: #333;
+    line-height: 1.8;
+    background: #fff;
   }
-  .slide {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 24px;
-    position: relative;
-  }
-  .slide::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
-  }
-
-  /* Slide 1: Cover */
-  .cover {
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-    text-align: center;
-  }
-  .cover h1 {
-    font-size: 42px;
-    font-weight: 900;
-    line-height: 1.2;
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, #f093fb, #f5576c, #4facfe);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .cover .subtitle {
-    font-size: 20px;
-    color: rgba(255,255,255,0.7);
-    margin-bottom: 30px;
-  }
-  .cover img {
-    width: 90%;
-    max-width: 500px;
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .cover .price-tag {
-    margin-top: 30px;
-    background: linear-gradient(135deg, #ff6b6b, #feca57);
-    padding: 12px 32px;
-    border-radius: 30px;
-    font-size: 24px;
-    font-weight: 800;
-    display: inline-block;
-  }
-
-  /* Slide 2: Speed */
-  .speed {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    text-align: center;
-  }
-  .speed h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: #48dbfb;
-  }
-  .speed img {
-    width: 90%;
-    max-width: 500px;
-    border-radius: 12px;
-    margin: 20px 0;
-  }
-  .speed .big-number {
-    font-size: 72px;
-    font-weight: 900;
-    background: linear-gradient(135deg, #feca57, #ff6b6b);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1;
-  }
-  .speed .big-unit {
-    font-size: 24px;
-    color: rgba(255,255,255,0.6);
-  }
-  .speed .speed-items {
-    margin-top: 20px;
-    font-size: 18px;
-    color: rgba(255,255,255,0.8);
-  }
-  .speed .speed-items p {
-    margin: 8px 0;
-  }
-
-  /* Slide 3: Features */
-  .features {
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 100%);
-    text-align: center;
-  }
-  .features h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 30px;
-    color: #ff9ff3;
-  }
-  .features .feature-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    width: 100%;
-    max-width: 500px;
-  }
-  .features .feature-item {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 20px 12px;
-    text-align: center;
-  }
-  .features .feature-item .emoji {
-    font-size: 32px;
-    margin-bottom: 8px;
-  }
-  .features .feature-item .text {
-    font-size: 14px;
-    color: rgba(255,255,255,0.8);
-  }
-
-  /* Slide 4: Problems Solved */
-  .problems {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    text-align: center;
-  }
-  .problems h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 30px;
-    color: #48dbfb;
-  }
-  .problems .problem-list {
-    width: 100%;
-    max-width: 500px;
-    text-align: left;
-  }
-  .problems .problem-item {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 12px;
-    margin-bottom: 12px;
-  }
-  .problems .problem-item .check {
-    width: 32px;
-    height: 32px;
-    background: #00b894;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-  .problems .problem-item .text {
-    font-size: 16px;
-    color: rgba(255,255,255,0.9);
-  }
-
-  /* Slide 5: Stability */
-  .stability {
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 100%);
-    text-align: center;
-  }
-  .stability h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: #feca57;
-  }
-  .stability img {
-    width: 90%;
-    max-width: 500px;
-    border-radius: 12px;
-    margin: 20px 0;
-  }
-  .stability .stat-row {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin-top: 20px;
-  }
-  .stability .stat {
-    text-align: center;
-  }
-  .stability .stat .num {
-    font-size: 48px;
-    font-weight: 900;
-    color: #00b894;
-  }
-  .stability .stat .label {
-    font-size: 14px;
-    color: rgba(255,255,255,0.6);
-  }
-
-  /* Slide 6: Smart Home */
-  .smarthome {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    text-align: center;
-  }
-  .smarthome h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: #ff9ff3;
-  }
-  .smarthome .freq-table {
-    width: 100%;
-    max-width: 500px;
-    border-collapse: collapse;
-    margin: 20px 0;
-  }
-  .smarthome .freq-table th {
-    background: rgba(255,255,255,0.1);
-    padding: 12px;
-    text-align: left;
-    font-size: 14px;
-  }
-  .smarthome .freq-table td {
-    padding: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 14px;
-  }
-  .smarthome .smart-list {
-    margin-top: 20px;
-    font-size: 16px;
-    color: rgba(255,255,255,0.7);
-  }
-  .smarthome .smart-list p {
-    margin: 8px 0;
-  }
-
-  /* Slide 7: Price */
-  .pricing {
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-    text-align: center;
-  }
-  .pricing h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 30px;
-    color: #feca57;
-  }
-  .pricing .price-box {
-    background: linear-gradient(135deg, #ff6b6b, #feca57);
-    border-radius: 20px;
-    padding: 30px;
-    margin: 20px 0;
-  }
-  .pricing .price-box .amount {
-    font-size: 64px;
-    font-weight: 900;
-  }
-  .pricing .price-box .desc {
-    font-size: 18px;
-    opacity: 0.9;
-  }
-  .pricing .price-box .per {
-    font-size: 24px;
-    font-weight: 700;
-    margin-top: 10px;
-  }
-  .pricing .compare {
-    margin-top: 30px;
-    width: 100%;
-    max-width: 500px;
-  }
-  .pricing .compare table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .pricing .compare th {
-    background: rgba(255,255,255,0.1);
-    padding: 12px;
-    text-align: left;
-    font-size: 14px;
-  }
-  .pricing .compare td {
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 14px;
-  }
-  .pricing .cta {
-    display: inline-block;
-    background: #ff6b6b;
-    color: white;
-    padding: 16px 48px;
-    border-radius: 30px;
-    font-size: 20px;
-    font-weight: 700;
-    margin-top: 30px;
-    text-decoration: none;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-  }
-  .pricing .tags {
-    margin-top: 24px;
-  }
-  .pricing .tag {
-    display: inline-block;
-    background: rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.7);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    margin: 4px;
-  }
+  h1 { text-align: center; font-size: 24px; margin: 20px 0; }
+  h2 { font-size: 18px; margin: 24px 0 12px; }
+  p { margin: 8px 0; }
+  img { max-width: 100%; border-radius: 4px; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f5f5f5; }
+  .center { text-align: center; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .cta { text-align: center; margin: 24px 0; }
+  .cta a { display: inline-block; padding: 12px 32px; background: #1890ff; color: #fff; border-radius: 4px; text-decoration: none; font-size: 16px; }
+  .tags { text-align: center; margin: 16px 0; }
+  .tags span { display: inline-block; background: #f0f0f0; padding: 2px 10px; border-radius: 4px; font-size: 13px; color: #666; margin: 2px; }
+  .price { text-align: center; background: #f6ffed; border: 1px solid #b7eb8f; padding: 16px; border-radius: 4px; margin: 20px 0; }
+  .price .amount { font-size: 36px; font-weight: bold; color: #52c41a; }
+  .price .detail { font-size: 14px; color: #666; }
 </style>
 </head>
 <body>
 
-  <!-- Slide 1: Cover -->
-  <div class="slide cover">
-    <h1>宿舍WiFi太慢？<br>你想拥有更快的网速吗？</h1>
-    <p class="subtitle">路由器折腾记录</p>
-    <img src="img/1.png" alt="路由器实物">
-    <div class="price-tag">全套 ¥150 · 四人平摊每人 ¥37.5</div>
-  </div>
+<h1>宿舍WiFi太慢？你想拥有更快的网速吗？</h1>
+<p class="subtitle">路由器折腾记录</p>
 
-  <!-- Slide 2: Speed -->
-  <div class="slide speed">
-    <h2>⚡ 实测网速</h2>
-    <img src="img/2.png" alt="测速截图">
-    <div class="big-number">12.8</div>
-    <div class="big-unit">MB/s 下载速度</div>
-    <div class="speed-items">
-      <p>🎵 一秒下载一首歌</p>
-      <p>📺 三秒下载一集电视剧</p>
-      <p>🎮 打游戏延迟稳定</p>
-      <p>📱 多人同时刷视频，互不影响</p>
-    </div>
-  </div>
+---
 
-  <!-- Slide 3: Features -->
-  <div class="slide features">
-    <h2>✅ 连上就能用</h2>
-    <img src="img/3.png" alt="WiFi连接" style="width:90%;max-width:500px;border-radius:12px;margin-bottom:20px;">
-    <div class="feature-grid">
-      <div class="feature-item">
-        <div class="emoji">🔌</div>
-        <div class="text">插电就能用<br>不需要操心</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">🚀</div>
-        <div class="text">连上WiFi就能用<br>不用手动登录</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">⚡</div>
-        <div class="text">百兆跑满<br>智能分配带宽</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">🎮</div>
-        <div class="text">一人下载<br>不影响其他人</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">🔄</div>
-        <div class="text">断网1秒恢复<br>你感觉不到</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">🚫</div>
-        <div class="text">广告屏蔽<br>全设备生效</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">📚</div>
-        <div class="text">教务/图书馆<br>正常访问</div>
-      </div>
-      <div class="feature-item">
-        <div class="emoji">🔗</div>
-        <div class="text">台式机<br>可以插网线</div>
-      </div>
-    </div>
-  </div>
+### 📡 路由器实物
 
-  <!-- Slide 4: Problems Solved -->
-  <div class="slide problems">
-    <h2>🔧 踩过的坑，都解决了</h2>
-    <img src="img/4.png" alt="管理界面" style="width:90%;max-width:500px;border-radius:12px;margin-bottom:20px;">
-    <div class="problem-list">
-      <div class="problem-item">
-        <div class="check">✓</div>
-        <div class="text">设备重连会断网 → 频宽对齐 + 信道锁定</div>
-      </div>
-      <div class="problem-item">
-        <div class="check">✓</div>
-        <div class="text">断网恢复要20秒 → 优化到1秒</div>
-      </div>
-      <div class="problem-item">
-        <div class="check">✓</div>
-        <div class="text">校园网站打不开 → DNS分流修复</div>
-      </div>
-      <div class="problem-item">
-        <div class="check">✓</div>
-        <div class="text">一人下载全宿舍卡 → 智能带宽分配</div>
-      </div>
-      <div class="problem-item">
-        <div class="check">✓</div>
-        <div class="text">广告太多 → 18万域名自动屏蔽</div>
-      </div>
-    </div>
-    <img src="img/5.png" alt="管理详情" style="width:90%;max-width:500px;border-radius:12px;margin-top:20px;">
-  </div>
+<img src="img/1.png" width="600" />
 
-  <!-- Slide 5: Stability -->
-  <div class="slide stability">
-    <h2>📊 稳定性验证</h2>
-    <img src="img/6.png" alt="压力测试">
-    <div class="stat-row">
-      <div class="stat">
-        <div class="num">9</div>
-        <div class="label">常用网站</div>
-      </div>
-      <div class="stat">
-        <div class="num">×30</div>
-        <div class="label">轮测试</div>
-      </div>
-      <div class="stat">
-        <div class="num">100%</div>
-        <div class="label">成功率</div>
-      </div>
-    </div>
-  </div>
+我花了一周，从零折腾了一台小米 AX3000T 路由器，刷了开源固件，让它变成宿舍的"专属基站"。
 
-  <!-- Slide 6: Smart Home -->
-  <div class="slide smarthome">
-    <h2>🏠 双频分工</h2>
-    <img src="img/9.png" alt="路由器" style="width:90%;max-width:500px;border-radius:12px;margin-bottom:20px;">
-    <table class="freq-table">
-      <tr><th>频段</th><th>用途</th><th>优势</th></tr>
-      <tr><td><b>5GHz</b></td><td>手机、电脑上网</td><td>速度快，跑满百兆</td></tr>
-      <tr><td><b>2.4GHz</b></td><td>智能家居</td><td>穿墙好，覆盖广</td></tr>
-    </table>
-    <div class="smart-list">
-      <p>💡 智能灯</p>
-      <p>🔊 智能音箱</p>
-      <p>🔌 智能插座</p>
-      <p>📷 摄像头</p>
-      <p style="margin-top:16px;font-weight:700;color:#ff9ff3;">宿舍秒变智能宿舍</p>
-    </div>
-  </div>
+WiFi6 协议，双频 2.4G + 5G，四根天线信号覆盖整个宿舍。
 
-  <!-- Slide 7: Price -->
-  <div class="slide pricing">
-    <h2>💰 装机服务</h2>
-    <div class="price-box">
-      <div class="amount">¥150</div>
-      <div class="desc">路由器 + 刷机 + 全套配置 + 测试 + 教你用</div>
-      <div class="per">四人平摊 · 每人每月不到 ¥10</div>
-    </div>
-    <div class="compare">
-      <table>
-        <tr><th>对比项</th><th>自己搞</th><th>找我装</th></tr>
-        <tr><td>技术门槛</td><td>需要基础</td><td>不需要</td></tr>
-        <tr><td>时间成本</td><td>一周</td><td>半天</td></tr>
-        <tr><td>踩坑数量</td><td>9+个</td><td>直接跳过</td></tr>
-        <tr><td>售后支持</td><td>自己查</td><td>随时联系</td></tr>
-      </table>
-    </div>
-    <a class="cta" href="#">有需要的同学私我~ 😘</a>
-    <div class="tags">
-      <span class="tag">#校园网</span>
-      <span class="tag">#路由器</span>
-      <span class="tag">#大学生省钱</span>
-      <span class="tag">#宿舍神器</span>
-      <span class="tag">#WiFi6</span>
-      <span class="tag">#河大</span>
-      <span class="tag">#开学必备</span>
-    </div>
-  </div>
+---
+
+### ⚡ 实测网速
+
+<img src="img/2.png" width="600" />
+
+实测下载速度 **12.8MB/s**，换算成带宽就是 **102Mbps**，跑满了校园网的百兆上限。
+
+🎵 一秒下载一首歌
+📺 三秒下载一集电视剧
+🎮 打游戏延迟稳定，不会突然卡顿
+📱 多人同时刷视频，互不影响
+
+---
+
+### 📱 连上就能用
+
+<img src="img/3.png" width="600" />
+
+**连上WiFi就能用，不用打开浏览器，不用手动登录。**
+
+掉线了自动重连，你甚至感觉不到中间断过。
+
+---
+
+### 🔧 踩过的坑，都解决了
+
+<img src="img/4.png" width="600" />
+
+折腾过程中踩了不少坑，每一个都是实打实解决的：
+
+| 问题 | 具体表现 | 状态 |
+|------|----------|------|
+| 设备重连会断网 | 室友手机重连WiFi，全宿舍断网 | ✅ 已修复 |
+| 断网恢复慢 | 恢复要等20秒 | ✅ 优化到1秒 |
+| 校园网站打不开 | 教务系统、图书馆加载失败 | ✅ 已修复 |
+| 一人下载全宿舍卡 | 室友下东西，我打游戏卡死 | ✅ 智能分配 |
+| 广告太多 | 网页弹窗、视频广告烦人 | ✅ 自动屏蔽 |
+
+<img src="img/5.png" width="600" />
+
+这些问题花了好几天才全部搞定，但现在都稳定解决了。**你踩过的坑，别人不用再踩。**
+
+---
+
+### 📊 稳定性验证
+
+<img src="img/6.png" width="600" />
+
+**9 个常用网站 × 30 轮连续访问测试，全部通过，成功率 100%。**
+
+测的都是真实场景：百度、B站、教务系统、图书馆……不是实验室数据，是真实能用。
+
+---
+
+### 🔌 有线扩展
+
+<img src="img/7.png" width="600" />
+
+路由器背面有 LAN 口，台式机、游戏主机、网络打印机都可以直接插网线。
+
+有线连接比 WiFi 更稳定，延迟更低，打游戏的同学可以优先考虑。
+
+---
+
+### 📶 WiFi6 极速连接
+
+<img src="img/9.png" width="600" />
+
+WiFi6 协议，连接速率 **1200Mbps**，实际跑满校园网百兆带宽。
+
+比普通 WiFi5 路由器快 2.4 倍，信号更强，穿墙更好，多人同时连接不卡顿。
+
+四根天线，5GHz + 2.4GHz 双频并发，宿舍每个角落都有信号。
+
+---
+
+### 📡 双频分工：5G 上网 + 2.4G 智能家居
+
+| 频段 | 用途 | 优势 |
+|------|------|------|
+| **5GHz** | 手机、电脑上网主力 | 速度快，跑满百兆，延迟低 |
+| **2.4GHz** | 智能家居设备 | 穿墙好，覆盖广，兼容性强 |
+
+智能灯、智能音箱、智能插座、摄像头——全连 2.4G，不影响 5G 的网速。
+
+**宿舍秒变智能宿舍。**
+
+---
+
+### ✅ 最终能做到的事
+
+✅ 插电就能用，不需要操心任何东西
+✅ 连上WiFi就能用，不用手动登录，掉线自动重连
+✅ 百兆跑满，智能分配带宽
+✅ 一人下载不影响其他人
+✅ 断网1秒自动恢复，你感觉不到
+✅ 广告屏蔽，全设备自动生效
+✅ 教务系统、图书馆正常访问
+✅ 台式机、游戏主机可以插网线
+✅ 2.4G 支持智能家居
+✅ 流量监控，每台设备一目了然
+✅ 性能监控，CPU/内存/延迟长期记录
+
+---
+
+### ⚖️ 自己搞 vs 找我装
+
+| 对比项 | 自己搞 | 找我装 |
+|--------|--------|--------|
+| 技术门槛 | 需要 Linux、网络基础 | 不需要任何技术 |
+| 时间成本 | 花一周时间 | 半天搞定 |
+| 踩坑数量 | 9+ 个坑，每个都要排查 | 坑都踩过了，直接跳过 |
+| 成功率 | 可能搞不定 | 保证能用 |
+| 售后支持 | 出问题自己查 | 有问题随时联系 |
+
+---
+
+<div class="price">
+  <div class="amount">¥150</div>
+  <div class="detail">全套服务：路由器 + 刷机 + 全套配置 + 测试 + 教你用</div>
+  <div class="detail">四人平摊，每人 ¥37.5，每月每人不到 ¥10</div>
+</div>
+
+自己从零搞需要折腾一周，找我装半天就能用，包售后。
+
+你只需要提供校园网账号密码，剩下的我来搞定。
+
+---
+
+<div class="cta">
+  <a href="#">有需要的同学可以私我哦~ 😘</a>
+</div>
+
+<div class="tags">
+  <span>#校园网</span>
+  <span>#路由器</span>
+  <span>#大学生省钱</span>
+  <span>#宿舍神器</span>
+  <span>#WiFi6</span>
+  <span>#河大</span>
+  <span>#开学必备</span>
+</div>
 
 </body>
 </html>
