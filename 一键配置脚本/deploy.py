@@ -309,6 +309,12 @@ def config_dorm_wifi(ssid, password):
     ssh.run(f"uci set wireless.default_radio0.key='{password}'", timeout=5)
     ssh.run("uci set wireless.default_radio0.mode='ap'", timeout=5)
     ssh.run("uci set wireless.default_radio0.network='lan'", timeout=5)
+    # Phase 13: hostapd 调优 — 防止设备重连导致其他设备断联
+    ssh.run("uci set wireless.default_radio0.disassoc_low_ack='0'", timeout=5)
+    ssh.run("uci set wireless.default_radio0.skip_inactivity_poll='1'", timeout=5)
+    ssh.run("uci set wireless.default_radio0.wpa_group_rekey='86400'", timeout=5)
+    ssh.run("uci set wireless.default_radio0.uapsd='0'", timeout=5)
+    ssh.run("uci set wireless.default_radio0.auth_cache='1'", timeout=5)
     ssh.run("uci commit wireless", timeout=5)
     return True
 
@@ -673,12 +679,21 @@ def deploy_dns_fix():
         "sed -i 's/^log-facility=\\/dev\\/null/#log-facility=\\/dev\\/null/' /etc/dnsmasq.conf",
         timeout=5)
 
+    # Phase 13: 延长 DHCP 租约 — 防止设备重连触发连锁断联
+    cur_lease = ssh.run("uci get dhcp.lan.leasetime 2>/dev/null", timeout=5)[1].strip()
+    if cur_lease and cur_lease != "168h":
+        ssh.run("uci set dhcp.lan.leasetime='168h'", timeout=5)
+        _ok(f"DHCP 租约: {cur_lease} → 168h (7天)")
+    elif not cur_lease:
+        ssh.run("uci set dhcp.lan.leasetime='168h'", timeout=5)
+        _ok("DHCP 租约: 168h (7天)")
+
     # Commit and restart
     ssh.run("uci commit dhcp", timeout=5)
     ssh.run("/etc/init.d/dnsmasq restart", timeout=10)
 
     if ok:
-        _ok("DNS 修复完成 (hosts + filter_aaaa + rebind豁免 + 域名转发)")
+        _ok("DNS 修复完成 (hosts + filter_aaaa + rebind豁免 + 域名转发 + DHCP 168h)")
     else:
         _warn("DNS 修复部分失败")
     return ok

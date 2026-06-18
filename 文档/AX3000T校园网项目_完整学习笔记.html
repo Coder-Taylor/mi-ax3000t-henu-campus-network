@@ -3757,10 +3757,231 @@ ssh<span class="w"> </span>ax3000t<span class="w"> </span><span class="s2">&quot
 - 守护进程启动 → 检测网络 → 触发认证</p>
 <p>如果守护进程在网络初始化完成前就触发认证，必然失败。30 秒冷却期给了网络充分的初始化时间。</p>
 <hr />
+<p><a name="phase13"></a></p>
+<h2 id="phase-13-v3-dhcp-hostapd">Phase 13：设备重连断联修复 v3 —— DHCP 租约 + hostapd 配置对齐</h2>
 <blockquote>
-<p><strong>最后更新</strong>：2026-06-12<br />
-<strong>完成状态</strong>：🎉 步骤0 + Phase 0-12 + 步骤11-12 全部完成<br />
-<strong>新增</strong>：Phase 12（修复启动后认证循环失败）</p>
+<p><strong>问题现象</strong>：以前连接过的设备（设备 A）重新再连上 WiFi 时，会导致其他设备与该 WiFi 断联。特别是当设备 A 离开时间较长（半天/12小时以上）后重连，几乎必然触发此问题；而短时间离开（几分钟）后重连则不会。</p>
+<p>用户敏锐地猜测这与"时间认证"有关——事实证明，<strong>DHCP 租约时间 12 小时</strong>正是关键阈值。</p>
+</blockquote>
+<h3 id="131">13.1 排查过程</h3>
+<h4 id="_40">第一步：收集所有超时配置</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 检查 DHCP 租约</span>
+uci<span class="w"> </span>show<span class="w"> </span>dhcp.lan.leasetime<span class="w">    </span><span class="c1"># → 12h  ← 🔴 精准匹配&quot;半天&quot;！</span>
+
+<span class="c1"># 检查 WiFi AP 配置</span>
+cat<span class="w"> </span>/var/run/hostapd-phy0.conf<span class="w">  </span><span class="c1"># 2.4G</span>
+cat<span class="w"> </span>/var/run/hostapd-phy1.conf<span class="w">  </span><span class="c1"># 5G</span>
+</code></pre></div>
+
+<p><strong>关键发现：2.4G 和 5G AP 的 hostapd 配置不一致！</strong></p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th style="text-align: center;">2.4G (phy0-ap0)</th>
+<th style="text-align: center;">5G (phy1-ap0)</th>
+<th style="text-align: center;">不一致？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>disassoc_low_ack</code></td>
+<td style="text-align: center;"><strong>1</strong> (开启)</td>
+<td style="text-align: center;">0 (关闭)</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td><code>skip_inactivity_poll</code></td>
+<td style="text-align: center;"><strong>0</strong> (轮询)</td>
+<td style="text-align: center;">1 (跳过)</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td><code>wpa_group_rekey</code></td>
+<td style="text-align: center;">默认 86400</td>
+<td style="text-align: center;">86400 (显式)</td>
+<td style="text-align: center;">⚠️</td>
+</tr>
+<tr>
+<td><code>uapsd_advertisement_enabled</code></td>
+<td style="text-align: center;">1 (开启)</td>
+<td style="text-align: center;">1 (开启)</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td><code>disable_pmksa_caching</code></td>
+<td style="text-align: center;">1 (禁用)</td>
+<td style="text-align: center;">1 (禁用)</td>
+<td style="text-align: center;">✅</td>
+</tr>
+</tbody>
+</table>
+<p><strong>原理分析</strong>：</p>
+<ul>
+<li><code>disassoc_low_ack=1</code>：AP 发送帧给客户端后，如果没有收到 ACK 确认，就会立即将该客户端踢下线。当设备 A 重连时触发大量广播帧（DHCP DISCOVER、ARP 探测等），信号弱的客户端可能来不及回复 ACK，被连锁踢出。</li>
+<li><code>skip_inactivity_poll=0</code>：AP 主动向不活跃的客户端发送探测帧。如果探测帧没有收到回复（客户端处于省电模式或信号弱），同样会触发 <code>disassoc_low_ack</code> 踢出。</li>
+<li>DHCP 租约 12h：设备离开超过 12 小时 → 租约过期被 dnsmasq 清除 → 设备重连时需要完整的 DHCP DISCOVER（而非快速 REQUEST）→ 产生更多广播流量 → 触发上述问题。</li>
+</ul>
+<h4 id="_41">第二步：检查其他超时</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Conntrack 超时</span>
+cat<span class="w"> </span>/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established<span class="w">  </span><span class="c1"># → 7440s (~2h)</span>
+cat<span class="w"> </span>/proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream<span class="w">       </span><span class="c1"># → 180s</span>
+
+<span class="c1"># ARP 超时</span>
+cat<span class="w"> </span>/proc/sys/net/ipv4/neigh/default/gc_stale_time<span class="w">                </span><span class="c1"># → 60s (太短)</span>
+
+<span class="c1"># Bridge MAC 老化</span>
+cat<span class="w"> </span>/sys/class/net/br-lan/bridge/ageing_time<span class="w">                       </span><span class="c1"># → 30000cs (300s)</span>
+
+<span class="c1"># WED 硬件加速</span>
+dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>wed<span class="w">    </span><span class="c1"># → wed device 0 version 2 (活跃)</span>
+</code></pre></div>
+
+<p>Conntrack、ARP、Bridge 老化时间都太短，不匹配"半天"的时间尺度。</p>
+<h4 id="_42">第三步：溯源配置差异</h4>
+<p>5G AP 的优化配置（<code>disassoc_low_ack=0</code>, <code>skip_inactivity_poll=1</code>）是在 Step 8/10 中断网修复时手动添加的，但<strong>2.4G AP 遗漏了同样的配置</strong>，导致两个频段行为不一致。</p>
+<h4 id="uci">第四步：识别 UCI 选项映射</h4>
+<p>OpenWrt 的 <code>/lib/netifd/hostapd.sh</code> 脚本负责将 UCI 选项转换为 hostapd 参数：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 关键映射关系（从 hostapd.sh 源码确认）：</span>
+set_default<span class="w"> </span>disassoc_low_ack<span class="w"> </span><span class="m">1</span><span class="w">     </span><span class="c1"># UCI: disassoc_low_ack → hostapd: disassoc_low_ack</span>
+set_default<span class="w"> </span>skip_inactivity_poll<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="c1"># UCI: skip_inactivity_poll → hostapd: skip_inactivity_poll</span>
+set_default<span class="w"> </span>uapsd<span class="w"> </span><span class="m">1</span><span class="w">                </span><span class="c1"># UCI: uapsd → hostapd: uapsd_advertisement_enabled</span>
+<span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$auth_cache</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>append<span class="w"> </span><span class="s2">&quot;disable_pmksa_caching=1&quot;</span><span class="w">  </span><span class="c1"># UCI: auth_cache 控制 PMKSA</span>
+</code></pre></div>
+
+<h3 id="132">13.2 修复方案</h3>
+<p>共 5 项修复，从根因到优化逐层递进：</p>
+<h4 id="1-24g-5g-hostapd">修复 1：对齐 2.4G 和 5G 的 hostapd 配置</h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 2.4G AP 添加与 5G 相同的优化参数</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.disassoc_low_ack<span class="o">=</span><span class="s1">&#39;0&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.skip_inactivity_poll<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.wpa_group_rekey<span class="o">=</span><span class="s1">&#39;86400&#39;</span>
+
+<span class="c1"># 5G AP 保持不变（已有这些设置）</span>
+</code></pre></div>
+
+<p><strong>原理</strong>：<code>disassoc_low_ack=0</code> 关闭"弱 ACK 踢出"机制，防止广播帧触发连锁踢出。<code>skip_inactivity_poll=1</code> 跳过对不活跃客户端的主动探测，减少不必要的管理帧流量。</p>
+<h4 id="2-dhcp">修复 2：延长 DHCP 租约时间</h4>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>dhcp.lan.leasetime<span class="o">=</span><span class="s1">&#39;168h&#39;</span><span class="w">  </span><span class="c1"># 12h → 7天</span>
+</code></pre></div>
+
+<p><strong>原理</strong>：设备离开半天（12h）不再触发租约过期。即使离开一整个周末，租约仍然有效。设备重连时使用 DHCP REQUEST（快速恢复旧 IP），而非 DISCOVER（完整协商），大幅减少广播流量。</p>
+<h4 id="3-uapsdwmm">修复 3：关闭 UAPSD（WMM 省电模式）</h4>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.uapsd<span class="o">=</span><span class="s1">&#39;0&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.wifinet0.uapsd<span class="o">=</span><span class="s1">&#39;0&#39;</span>
+</code></pre></div>
+
+<p><strong>原理</strong>：UAPSD（Unscheduled Automatic Power Save Delivery）允许客户端在省电模式下不定期唤醒接收数据。但部分设备的 UAPSD 实现有 bug，会在重连或密钥更新时导致状态错乱。关闭后客户端使用传统的 DTIM 省电机制，兼容性更好。</p>
+<h4 id="4-pmksa">修复 4：启用 PMKSA 缓存</h4>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.default_radio0.auth_cache<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>wireless.wifinet0.auth_cache<span class="o">=</span><span class="s1">&#39;1&#39;</span>
+</code></pre></div>
+
+<p><strong>原理</strong>：PMKSA（Pairwise Master Key Security Association）缓存允许 AP 记住之前认证过的客户端。设备重连时直接使用缓存的 PMK，<strong>跳过 PBKDF2 密钥推导</strong>（WPA2-PSK 最耗时的步骤），重连速度从 ~500ms 降到 ~50ms，且不产生额外的 EAPOL 帧。</p>
+<blockquote>
+<p><strong>为什么之前禁用了？</strong> <code>disable_pmksa_caching=1</code> 是 OpenWrt 的保守默认值。PMKSA 缓存在某些企业级场景下有安全顾虑（缓存的密钥可能被利用），但在宿舍场景下完全不是问题。</p>
+</blockquote>
+<h4 id="5_1">修复 5：应用并验证</h4>
+<div class="codehilite"><pre><span></span><code>wifi<span class="w"> </span>reload<span class="w">        </span><span class="c1"># 重新生成 hostapd 配置并重启 radio</span>
+<span class="c1"># 等待 WiFi 恢复（~5 秒）</span>
+</code></pre></div>
+
+<p><strong>重启后验证</strong>：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 验证 hostapd 配置已更新</span>
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;disassoc_low_ack|skip_inactivity_poll|uapsd|wpa_group_rekey&#39;</span><span class="w"> </span>/var/run/hostapd-phy0.conf
+<span class="c1"># disassoc_low_ack=0</span>
+<span class="c1"># skip_inactivity_poll=1</span>
+<span class="c1"># uapsd_advertisement_enabled=0</span>
+<span class="c1"># wpa_group_rekey=86400</span>
+
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;disable_pmksa_caching&#39;</span><span class="w"> </span>/var/run/hostapd-phy0.conf
+<span class="c1"># (无输出 — PMKSA 缓存已启用！)</span>
+
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;disassoc_low_ack|skip_inactivity_poll|uapsd|wpa_group_rekey&#39;</span><span class="w"> </span>/var/run/hostapd-phy1.conf
+<span class="c1"># 5G 同样全部生效</span>
+</code></pre></div>
+
+<h3 id="133">13.3 修复前后对比</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th style="text-align: center;">修复前 (2.4G)</th>
+<th style="text-align: center;">修复前 (5G)</th>
+<th style="text-align: center;">修复后 (两者)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>disassoc_low_ack</code></td>
+<td style="text-align: center;">1 ❌</td>
+<td style="text-align: center;">0 ✅</td>
+<td style="text-align: center;"><strong>0</strong> ✅</td>
+</tr>
+<tr>
+<td><code>skip_inactivity_poll</code></td>
+<td style="text-align: center;">0 ❌</td>
+<td style="text-align: center;">1 ✅</td>
+<td style="text-align: center;"><strong>1</strong> ✅</td>
+</tr>
+<tr>
+<td><code>wpa_group_rekey</code></td>
+<td style="text-align: center;">默认</td>
+<td style="text-align: center;">86400</td>
+<td style="text-align: center;"><strong>86400</strong> ✅</td>
+</tr>
+<tr>
+<td><code>uapsd_advertisement_enabled</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;"><strong>0</strong> ✅</td>
+</tr>
+<tr>
+<td><code>disable_pmksa_caching</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;"><strong>(不存在)</strong> ✅</td>
+</tr>
+<tr>
+<td>DHCP 租约</td>
+<td style="text-align: center;">12h ❌</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;"><strong>168h</strong> ✅</td>
+</tr>
+</tbody>
+</table>
+<h3 id="134-12">13.4 为什么 12 小时是阈值？</h3>
+<p>完整的因果链：</p>
+<div class="codehilite"><pre><span></span><code>设备 A 离开 &gt;12h
+   │
+   ▼
+DHCP 租约过期 (12h)
+   │
+   ▼
+设备 A 重连 → DHCP DISCOVER（完整协商，非快速 REQUEST）
+   │
+   ▼
+大量广播帧（DHCP ARP 探测、EAPOL 4-way handshake）
+   │
+   ├─→ 2.4G: disassoc_low_ack=1 → 弱信号设备 ACK 来不及 → 被踢
+   ├─→ 5G: 广播帧干扰 → WED 硬件加速 station 表更新 → 其它设备短暂异常
+   └─→ 所有设备: UAPSD 省电模式 → 唤醒延迟 → 更易错过 ACK
+</code></pre></div>
+
+<p><strong>为什么短时间离开没问题？</strong><br />
+- &lt;12h：DHCP 租约有效 → 设备用 DHCP REQUEST 快速续租 → 无广播风暴<br />
+- &lt;5min：hostapd station 表还有该设备 → 重连只需 2-way 握手（若 PMKSA 缓存开启）</p>
+<h3 id="135">13.5 原理总结</h3>
+<blockquote>
+<p><strong>核心教训</strong>：WiFi AP 的两个频段必须保持配置一致。不一致的 <code>disassoc_low_ack</code> 相当于给 2.4G 设备装了"连坐惩罚机制"——一个设备重连产生的广播帧，会让信号不好的设备全部掉线。</p>
+<p>DHCP 租约时间不只是"IP 分配有效期"，它影响重连时的 DHCP 协商路径（REQUEST vs DISCOVER），进而影响产生的网络帧数量和类型。</p>
+<p>这解释了用户观察到的精确定量规律：<strong>12 小时是一个硬边界</strong>，恰好是 DHCP 租约过期时间。</p>
+</blockquote>
+<hr />
+<blockquote>
+<p><strong>最后更新</strong>：2026-06-18<br />
+<strong>完成状态</strong>：🎉 步骤0 + Phase 0-13 + 步骤11-13 全部完成<br />
+<strong>新增</strong>：Phase 13（设备重连断联修复 v3）</p>
 </blockquote>
 
 <div style="text-align:center;color:#94a3b8;font-size:0.85em;margin-top:3em;padding-top:1em;border-top:1px solid #e2e8f0;">

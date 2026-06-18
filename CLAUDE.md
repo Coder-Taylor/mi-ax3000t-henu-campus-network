@@ -29,6 +29,7 @@
 步骤11: ✅ 广告拦截 adblock（DNS 层面，185,435 域名，全设备生效）
 步骤12: ✅ WireGuard VPN 客户端 + NTP 时间同步 + 流量监控(nlbwmon) + 网络质量监控(collectd)
 Phase12: ✅ 修复启动后认证循环失败（v2.0守护进程 + v3.0认证脚本，恢复时间 8min→3min）
+步骤13: ✅ 设备重连断联修复 v3（2.4G/5G hostapd 配置对齐 + DHCP租约168h + UAPSD关闭 + PMKSA缓存开启）
 ```
 
 ## 当前运行状态

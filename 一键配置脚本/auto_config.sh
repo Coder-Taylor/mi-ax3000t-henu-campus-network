@@ -183,9 +183,15 @@ step2_wifi() {
     uci set wireless.default_radio0.ssid="$WIFI_SSID"
     uci set wireless.default_radio0.encryption='psk2'
     uci set wireless.default_radio0.key="$WIFI_PASS"
+    # Phase 13: hostapd 调优 — 防止设备重连导致其他设备断联
+    uci set wireless.default_radio0.disassoc_low_ack='0'
+    uci set wireless.default_radio0.skip_inactivity_poll='1'
+    uci set wireless.default_radio0.wpa_group_rekey='86400'
+    uci set wireless.default_radio0.uapsd='0'
+    uci set wireless.default_radio0.auth_cache='1'
     uci commit wireless
 
-    step_ok "2.4G 宿舍 WiFi 配置完成"
+    step_ok "2.4G 宿舍 WiFi 配置完成（含 Phase 13 hostapd 调优）"
 
     press_enter
 }
