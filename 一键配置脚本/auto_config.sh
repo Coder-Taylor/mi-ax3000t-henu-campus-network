@@ -193,6 +193,36 @@ step2_wifi() {
 
     step_ok "2.4G 宿舍 WiFi 配置完成（含 Phase 13 hostapd 调优）"
 
+    # ── 5G AP：在 radio1 上创建第二个热点（复用2.4G的SSID+密码，加-5G后缀）──
+    echo ""
+    echo -e "  ${BLUE}[i]${NC} 正在配置 5G 宿舍 WiFi（wifinet0）..."
+    WIFI_5G_SSID="${WIFI_SSID}-5G"
+
+    # 锁定5G信道（ch52），避免 ACS 触发 radio reset
+    uci set wireless.radio1.channel='52'
+    uci set wireless.radio1.htmode='HE40'
+
+    # 创建 wifinet0（如果已存在则更新）
+    if ! uci get wireless.wifinet0 >/dev/null 2>&1; then
+        uci set wireless.wifinet0='wifi-iface'
+        uci set wireless.wifinet0.device='radio1'
+        uci set wireless.wifinet0.mode='ap'
+        step_info "创建 wifinet0 5G AP 接口"
+    fi
+    uci set wireless.wifinet0.ssid="$WIFI_5G_SSID"
+    uci set wireless.wifinet0.encryption='psk2'
+    uci set wireless.wifinet0.key="$WIFI_PASS"
+    uci set wireless.wifinet0.network='lan'
+    # Phase 13: hostapd 调优
+    uci set wireless.wifinet0.disassoc_low_ack='0'
+    uci set wireless.wifinet0.skip_inactivity_poll='1'
+    uci set wireless.wifinet0.wpa_group_rekey='86400'
+    uci set wireless.wifinet0.uapsd='0'
+    uci set wireless.wifinet0.auth_cache='1'
+    uci commit wireless
+
+    step_ok "5G 宿舍 WiFi 配置完成: ${WIFI_5G_SSID} (ch52/HE40, 含 Phase 13 调优)"
+
     press_enter
 }
 
@@ -704,9 +734,16 @@ step5_dns() {
     # Fix 5: 确保日志不被丢弃
     sed -i 's/^log-facility=\/dev\/null/#log-facility=\/dev\/null/' /etc/dnsmasq.conf
 
+    # Phase 13: 延长 DHCP 租约 — 防止设备重连触发连锁断联
+    CUR_LEASE=$(uci get dhcp.lan.leasetime 2>/dev/null)
+    if [ "$CUR_LEASE" != "168h" ]; then
+        uci set dhcp.lan.leasetime='168h'
+        step_ok "DHCP 租约: ${CUR_LEASE:-默认} → 168h (7天)"
+    fi
+
     uci commit dhcp
     /etc/init.d/dnsmasq restart 2>/dev/null
-    step_ok "dnsmasq 已重启，DNS 修复完成"
+    step_ok "dnsmasq 已重启，DNS 修复完成（含 Phase 13 DHCP 168h）"
 
     press_enter
 }
@@ -815,17 +852,20 @@ final_summary() {
     echo "  ├─────────────────────────────────────────────┤"
     echo "  │  root 密码:      ${ROOT_PASSWORD}                    │"
     echo "  │  Web 管理:       http://192.168.1.1          │"
-    echo "  │  宿舍 WiFi:      ${WIFI_SSID}                    │"
+    echo "  │  宿舍 WiFi 2.4G:  ${WIFI_SSID}                    │"
+    echo "  │  宿舍 WiFi 5G:    ${WIFI_SSID}-5G (ch52/HE40)     │"
     echo "  │  WiFi 密码:      ${WIFI_PASS}                    │"
     echo "  │  校园网 SSID:    ${CAMPUS_SSID}                    │"
     echo "  │  校园网账号:     ${AUTH_USER}                    │"
     echo "  │  CAKE 流控:      110Mbps（智能动态分配）        │"
     echo "  │  LuCI 主题:      Argon（可换壁纸）               │"
+    echo "  │  DHCP 租约:      168h (7天, 防断联)              │"
+    echo "  │  hostapd 调优:   disassoc_low_ack=0 + PMKSA缓存 │"
     echo "  │  auto_login:     /etc/campus_network/          │"
-    echo "  │  cron:           每5分钟自动检测                │"
+    echo "  │  守护进程:       秒级恢复路由 + cron 5分钟兜底   │"
     echo "  ├─────────────────────────────────────────────┤"
     echo "  │  拔掉网线，只留电源线即可工作                   │"
-    echo "  │  手机连 ${WIFI_SSID} 即可上网                  │"
+    echo "  │  手机连 ${WIFI_SSID} 或 ${WIFI_SSID}-5G 即可上网  │"
     echo "  └─────────────────────────────────────────────┘"
     echo ""
     echo "  故障排查:"

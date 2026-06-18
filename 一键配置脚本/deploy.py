@@ -318,6 +318,50 @@ def config_dorm_wifi(ssid, password):
     ssh.run("uci commit wireless", timeout=5)
     return True
 
+def config_5g_ap(ssid_2g, password):
+    """配置5G AP — 在 radio1 上创建第二个 WiFi 热点（复用2.4G的SSID+密码，加-5G后缀）
+
+    适配场景：
+    - 全新路由器：创建 wifinet0 接口
+    - 已有5G AP：仅更新 Phase 13 调优参数（幂等安全）
+    """
+    ssid_5g = ssid_2g + "-5G"
+
+    # 检查 wifinet0 是否已存在
+    _, check = ssh.run("uci get wireless.wifinet0.ssid 2>/dev/null", timeout=5)
+    is_new = "wifinet0" not in check
+
+    if is_new:
+        _info("首次配置 5G AP（wifinet0）...")
+        # 锁定5G信道（ch52），避免 ACS 触发 radio reset
+        ssh.run("uci set wireless.radio1.channel='52'", timeout=5)
+        ssh.run("uci set wireless.radio1.htmode='HE40'", timeout=5)
+        # 创建 wifinet0 AP 接口
+        ssh.run("uci set wireless.wifinet0=wifi-iface", timeout=5)
+        ssh.run("uci set wireless.wifinet0.device='radio1'", timeout=5)
+        ssh.run("uci set wireless.wifinet0.mode='ap'", timeout=5)
+        ssh.run(f"uci set wireless.wifinet0.ssid='{ssid_5g}'", timeout=5)
+        ssh.run("uci set wireless.wifinet0.encryption='psk2'", timeout=5)
+        ssh.run(f"uci set wireless.wifinet0.key='{password}'", timeout=5)
+        ssh.run("uci set wireless.wifinet0.network='lan'", timeout=5)
+    else:
+        cur_ssid = check.strip() if check else "?"
+        _info(f"5G AP 已存在 (SSID: {cur_ssid})，更新 Phase 13 调优...")
+
+    # Phase 13: hostapd 调优（无论新建还是已有，都确保参数正确）
+    ssh.run("uci set wireless.wifinet0.disassoc_low_ack='0'", timeout=5)
+    ssh.run("uci set wireless.wifinet0.skip_inactivity_poll='1'", timeout=5)
+    ssh.run("uci set wireless.wifinet0.wpa_group_rekey='86400'", timeout=5)
+    ssh.run("uci set wireless.wifinet0.uapsd='0'", timeout=5)
+    ssh.run("uci set wireless.wifinet0.auth_cache='1'", timeout=5)
+    ssh.run("uci commit wireless", timeout=5)
+
+    if is_new:
+        _ok(f"5G WiFi 已创建: {ssid_5g} (ch52/HE40)")
+    else:
+        _ok(f"5G WiFi Phase 13 调优已更新")
+    return True
+
 def config_campus_sta(ssid, password=None, security="none"):
     """配置校园网STA连接 — 适配全新/已配置路由器"""
     # 备份（可能不存在，忽略错误）
@@ -984,10 +1028,14 @@ def lazy_mode():
     s = state_load(); s["step1_password"] = True; state_save(s)
     _ok("root 密码已设置")
 
-    # 宿舍WiFi
+    # 宿舍WiFi (2.4G)
     config_dorm_wifi(dorm_ssid, dorm_pwd)
     s["step2_wifi"] = True; state_save(s)
-    _ok("宿舍 WiFi 已配置")
+    _ok("2.4G WiFi 已配置")
+
+    # 5G AP (复用2.4G的SSID+密码，自动加-5G后缀)
+    config_5g_ap(dorm_ssid, dorm_pwd)
+    _ok("5G WiFi 已配置")
 
     # 校园网
     config_campus_sta(campus_ssid, campus_pwd, campus_sec)
