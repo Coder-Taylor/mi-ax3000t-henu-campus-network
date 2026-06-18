@@ -1,7 +1,7 @@
 #!/bin/sh
 # ============================================================
-#  校园网 DNS 修复脚本 v2.0
-#  修复：WiFi下无法访问校园网内部网站
+#  校园网 DNS 修复脚本 v2.1
+#  修复：WiFi下无法访问校园网内部网站 + 防止设备重连断联
 #
 #  问题1: 校园 DHCP DNS (111.6.174.198) 返回不可达IP 或 解析为空
 #     zwyy.henu.edu.cn    → 125.219.33.206   → /etc/hosts 写死: 202.196.96.29
@@ -21,7 +21,7 @@
 # ============================================================
 
 echo "================================================="
-echo " 校园网 DNS 修复工具 v2.0"
+echo " 校园网 DNS 修复工具 v2.1 (含 Phase 13 DHCP 调优)"
 echo "================================================="
 echo ""
 
@@ -85,6 +85,15 @@ fi
 
 # === Fix 5: 确保日志不被丢弃 ===
 sed -i 's/^log-facility=\/dev\/null/#log-facility=\/dev\/null/' /etc/dnsmasq.conf 2>/dev/null
+
+# === Fix 6: Phase 13 — 延长 DHCP 租约，防止设备重连触发连锁断联 ===
+CUR_LEASE=$(uci get dhcp.lan.leasetime 2>/dev/null)
+if [ "$CUR_LEASE" != "168h" ]; then
+    uci set dhcp.lan.leasetime='168h'
+    echo "  [set]  DHCP 租约: ${CUR_LEASE:-默认} → 168h (7天，防设备重连断联)"
+else
+    echo "  [skip] DHCP 租约: 168h (已是7天)"
+fi
 
 uci commit dhcp
 /etc/init.d/dnsmasq restart 2>/dev/null
