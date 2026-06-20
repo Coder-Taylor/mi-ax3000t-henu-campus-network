@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-#  校园网 DNS 修复脚本 v2.1
+#  校园网 DNS 修复脚本 v2.2
 #  修复：WiFi下无法访问校园网内部网站 + 防止设备重连断联
 #
 #  问题1: 校园 DHCP DNS (111.6.174.198) 返回不可达IP 或 解析为空
@@ -12,7 +12,7 @@
 #     superhuazai.me      → 校园DNS间歇解析异常 → /etc/hosts 写死: 104.21.18.208 (Cloudflare)
 #
 #  问题2: dnsmasq rebind 丢弃 RFC1918 私有IP
-#     → rebind-domain-ok=/henu.edu.cn/
+#     → rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/
 #
 #  问题3: DNS返回IPv6, 但路由器无IPv6路由
 #     → filter_aaaa=1 (全局过滤AAAA)
@@ -21,7 +21,7 @@
 # ============================================================
 
 echo "================================================="
-echo " 校园网 DNS 修复工具 v2.1 (含 Phase 13 DHCP 调优)"
+echo " 校园网 DNS 修复工具 v2.2 (含 Phase 13 DHCP 调优)"
 echo "================================================="
 echo ""
 
@@ -75,12 +75,16 @@ done
 uci set dhcp.@dnsmasq[0].filter_aaaa='1'
 echo "  [set]  filter_aaaa=1 (过滤IPv6)"
 
-# === Fix 4: 允许 henu.edu.cn 返回 RFC1918 私有IP ===
-if grep -q 'rebind-domain-ok=/henu.edu.cn/' /etc/dnsmasq.conf; then
-    echo "  [skip] rebind-domain-ok=/henu.edu.cn/ (已存在)"
+# === Fix 4: 允许 henu.edu.cn/ntp.org.cn 返回 RFC1918 私有IP ===
+if grep -q 'rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/' /etc/dnsmasq.conf; then
+    echo "  [skip] rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/ (已存在)"
+elif grep -q 'rebind-domain-ok=/henu.edu.cn/' /etc/dnsmasq.conf; then
+    # 升级旧版：添加 ntp.org.cn 豁免
+    sed -i 's|rebind-domain-ok=/henu.edu.cn/|rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/|' /etc/dnsmasq.conf
+    echo "  [upd]  rebind-domain-ok: 新增 /ntp.org.cn/ (抑制NTP DNS rebind告警)"
 else
-    echo 'rebind-domain-ok=/henu.edu.cn/' >> /etc/dnsmasq.conf
-    echo "  [add]  rebind-domain-ok=/henu.edu.cn/"
+    echo 'rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/' >> /etc/dnsmasq.conf
+    echo "  [add]  rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/"
 fi
 
 # === Fix 5: 确保日志不被丢弃 ===
