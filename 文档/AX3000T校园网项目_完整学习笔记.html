@@ -203,6 +203,7 @@
 <li><a href="#phase5">Phase 5：定时重连 &amp; NAT 修复</a></li>
 <li><a href="#pitfalls">踩坑记录 &amp; 故障排查技巧</a></li>
 <li><a href="#phase11">Phase 11：WireGuard VPN + NTP + 流量监控 + 网络质量监控</a></li>
+<li><a href="#dns-scan">附录：DNS 全量扫描（2026-06-20）</a></li>
 </ol>
 <hr />
 <p><a name="step0"></a></p>
@@ -3978,10 +3979,66 @@ DHCP 租约过期 (12h)
 <p>这解释了用户观察到的精确定量规律：<strong>12 小时是一个硬边界</strong>，恰好是 DHCP 租约过期时间。</p>
 </blockquote>
 <hr />
+<p><a name="dns-scan"></a></p>
+<h2 id="dns-2026-06-20">附录：DNS 全量扫描（2026-06-20 维护记录）</h2>
+<h3 id="_43">背景</h3>
+<p>Phase 9 配置了四层 DNS 修复（hosts + UCI 转发 + rebind 豁免 + AAAA 过滤），但覆盖范围有多广？是否有遗漏的域名需要添加 hosts？需要一次系统性的验证。</p>
+<h3 id="_44">方法</h3>
+<p>从河南大学信息化管理办公室发布的《主管主办网站.xlsx》（259 条记录）中提取了 <strong>249 个 <code>*.henu.edu.cn</code> 子域名</strong>，在路由器上用两个 DNS 服务器分别测试：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 双 DNS 对比测试</span>
+<span class="k">for</span><span class="w"> </span>d<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>cat<span class="w"> </span>/tmp/henu_domains.txt<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nv">r1</span><span class="o">=</span><span class="k">$(</span>nslookup<span class="w"> </span><span class="nv">$d</span><span class="w"> </span><span class="m">111</span>.6.174.198<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Address:&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1<span class="k">)</span>
+<span class="w">    </span><span class="nv">r2</span><span class="o">=</span><span class="k">$(</span>nslookup<span class="w"> </span><span class="nv">$d</span><span class="w"> </span><span class="m">114</span>.114.114.114<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Address:&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1<span class="k">)</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$d</span><span class="s2"> | 111:</span><span class="nv">$r1</span><span class="s2"> | 114:</span><span class="nv">$r2</span><span class="s2">&quot;</span>
+<span class="k">done</span>
+</code></pre></div>
+
+<h3 id="_45">结果</h3>
+<table>
+<thead>
+<tr>
+<th>DNS 服务器</th>
+<th>返回 IP</th>
+<th>覆盖域名数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>111.6.174.198（河南移动）</td>
+<td><code>172.31.7.4</code>（校内统一门户）</td>
+<td>~248/249</td>
+</tr>
+<tr>
+<td>114.114.114.114（114DNS）</td>
+<td><code>58.212.123.41</code>（公网 IP）</td>
+<td>~220/249</td>
+</tr>
+<tr>
+<td>114.114.114.114</td>
+<td><code>211.142.109.84</code>（非标准）</td>
+<td>~17/249</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_46">结论</h3>
+<p><strong>现有四层方案已全覆盖，无需新增 hosts。</strong> 理由：</p>
+<ol>
+<li><strong>111 DNS 更优先</strong>：111.6.174.198（校园网 DHCP 下发）对所有 <code>*.henu.edu.cn</code> 返回 <code>172.31.7.4</code>，解析速度快于外部 DNS，dnsmasq 优先采用</li>
+<li><strong>rebind 豁免覆盖全部</strong>：<code>rebind-domain-ok=/henu.edu.cn/</code> 允许所有 249 个子域名返回内网 IP</li>
+<li><strong>hosts 仅写死最关键 4 个</strong>：zwyy（125→202.196）、software（解析为空）、net（公网→内网）、superhuazai（间歇异常）——这些是 111 DNS 真正有问题的</li>
+<li><strong>17 个 114→211.142.109.84 的域名</strong>（如 emergency、id、bkjx）实际访问时走 111 DNS 的内网路径，不受影响</li>
+</ol>
+<h3 id="ntp-rebind">额外修复：NTP rebind 豁免</h3>
+<p>日志中发现 dnsmasq 偶尔警告 <code>possible DNS-rebind attack detected: cn.ntp.org.cn</code>。这是因为 NTP 时间同步服务器 <code>cn.ntp.org.cn</code> 返回了内网 IP。在 rebind 域中添加 <code>/ntp.org.cn/</code> 解决。</p>
+<div class="codehilite"><pre><span></span><code>uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>dhcp.@dnsmasq<span class="o">[</span><span class="m">0</span><span class="o">]</span>.rebind_domain_ok<span class="o">=</span><span class="s2">&quot;/henu.edu.cn/ /ntp.org.cn/&quot;</span>
+uci<span class="w"> </span>commit<span class="w"> </span>dhcp
+/etc/init.d/dnsmasq<span class="w"> </span>restart
+</code></pre></div>
+
+<hr />
 <blockquote>
-<p><strong>最后更新</strong>：2026-06-18<br />
-<strong>完成状态</strong>：🎉 步骤0 + Phase 0-13 + 步骤11-13 全部完成<br />
-<strong>新增</strong>：Phase 13（设备重连断联修复 v3）</p>
+<p><strong>最后更新</strong>：2026-06-20<br />
+<strong>完成状态</strong>：🎉 步骤0 + Phase 0-13 + 附录：DNS全量扫描 全部完成</p>
 </blockquote>
 
 <div style="text-align:center;color:#94a3b8;font-size:0.85em;margin-top:3em;padding-top:1em;border-top:1px solid #e2e8f0;">

@@ -2,8 +2,15 @@
 
 ## 🎉 状态：已完成！
 
-> **⚠️ 仓库规则**：每次对项目文件做任何修改后，必须 `git add -A && git commit -m "<描述>"` 并自动 push 到 Gitee。
-> 远程仓库：https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network
+> **⚠️ 仓库规则**：每次对项目文件做任何修改后，必须 `git add -A && git commit -m "<描述>"` 并自动推送。
+> 
+> **推送方式**（Gitee + GitHub 双推送已配置）：
+> - 自动：`git push` 会同时推送到两个仓库（origin 配置了 2 个 pushurl）
+> - 手动/紧急：双击 `一键配置脚本/!PUSH_ALL.bat` 分别推送两个仓库
+>
+> **远程仓库**：
+> - Gitee: https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network
+> - GitHub: https://github.com/Coder-Taylor/mi-ax3000t-henu-campus-network
 >
 > **📝 开发流程**：每次对话/修改后，按需更新以下文件：
 > 1. `CLAUDE.md` — 如果步骤进度、运行状态、关键信息、文件导航有变化
@@ -13,6 +20,12 @@
 > 5. `README.md` — 如果项目简介、快速开始、技术栈有变化
 > 6. `! re-generate HTML` — 修改 `开发日志.md` 后运行 `python 文档/convert_to_html.py`
 > 7. `git add -A && git commit -m "<描述>"` — 最后提交并推送
+>
+> **双推送命令**（同时推送到 Gitee + GitHub）：
+> ```bash
+> git push    # 自动推送到两个仓库（若 GitHub 认证失败）
+> 一键配置脚本\!PUSH_ALL.bat  # 或双击此 bat 文件分别推送
+> ```
 
 ```
 步骤0: ✅ 刷写 ImmortalWrt 大分区固件（XMiR-Patcher 解锁SSH → 备份Factory → sysupgrade）
@@ -133,6 +146,7 @@ AX3000T刷机校园网/
 │
 ├── 一键配置脚本/                   ← 路由器配置工具
 │   ├── !START.bat                 ← 双击启动配置菜单
+│   ├── !PUSH_ALL.bat              ← 双击推送到 Gitee + GitHub（双远程备用）
 │   ├── deploy.py                  ← 一键部署工具 v3.0（懒人模式）
 │   ├── auto_config.sh             ← 路由器一键配置脚本
 │   ├── fast_recovery_daemon.sh    ← 快速恢复守护进程 v2.0（秒级断网恢复）
@@ -143,6 +157,16 @@ AX3000T刷机校园网/
 │   ├── monitor.py                 ← 实时监控 + 压力测试 + 对比（Python 三合一）
 │   ├── gen_stress_image.py        ← 压力测试结果图表生成
 │   └── test_results/              ← 自动保存的 JSON 测试数据
+│
+├── 推广帖子/                        ← 小红书/抖音/QQ频道推广文案
+│   ├── 抖音小红书推广帖子/           ← 主要推广文案
+│   ├── QQ频道推广帖子/              ← QQ 群/频道文案
+│   └── img/                        ← 推广截图素材
+│
+├── _归档/                           ← 一次性输出和参考文件（gitignored）
+│   ├── henu_domains_list.txt       ← 2026-06-20 DNS 全量扫描原始数据
+│   ├── wireguard_qr.png            ← WireGuard 配置二维码
+│   └── *.url                       ← 刷机工具参考链接
 │
 ├── .ssh/                           ← SSH 配置和密钥
 ├── .claude/                        ← Claude Code 设置
