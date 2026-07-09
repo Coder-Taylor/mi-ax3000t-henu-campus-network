@@ -128,7 +128,7 @@ sh /etc/campus_network/auto_config.sh
 
 - [GitHub](https://github.com/Coder-Taylor/mi-ax3000t-henu-campus-network)
 - [Gitee](https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network)
-- [完整学习笔记（Markdown）](./文档/AX3000T校园网项目_完整学习笔记.md)
+- [开发总结（Markdown）](./文档/Mi-AX3000T路由器开发总结.md)
 - [完整学习笔记（HTML）](./文档/AX3000T校园网项目_完整学习笔记.html)
 
 ---
