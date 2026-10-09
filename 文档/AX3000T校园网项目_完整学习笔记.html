@@ -4187,6 +4187,39 @@ boot<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <h3 id="_49">守护进程信道锁修正</h3>
 <p><code>CAMPUS_CHANNEL="5260"</code> 与校园 AP 实际信道 <strong>5745MHz（ch149）</strong> 不符，<br />
 <code>iw connect henu-student 5260</code> 必然失败 → 改成 <code>CAMPUS_CHANNEL=""</code>（不带信道参数 = 自动跟随）。</p>
+<h3 id="19216811">自用机（192.168.1.1）同步修复</h3>
+<p>确认自用机也中了同样三个 bug，趁两台都在线一并修掉（改前已备份为 <code>*.bak_20261009</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>修复前</th>
+<th>修复后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crond</code></td>
+<td><strong>完全没在跑</strong>（<code>@reboot</code> 崩溃循环）→ <code>*/5</code> 兜底认证一直失效</td>
+<td>存活，<code>*/5</code> 恢复生效</td>
+</tr>
+<tr>
+<td><code>campus_auth</code></td>
+<td>开机认证从未执行（<code>boot()</code> 覆盖 + 多行 <code>-c</code>）</td>
+<td>非 procd 一次性脚本，<code>boot()</code> 内调 <code>start</code></td>
+</tr>
+<tr>
+<td>守护进程信道锁</td>
+<td>写死 5260MHz（实际 5745MHz）→ 重连兜底失效</td>
+<td>自动跟随 STA</td>
+</tr>
+</tbody>
+</table>
+<p>验证：<code>/etc/init.d/campus_auth boot</code> 走通 <code>[BootAuth] → 认证检测 → 网络已连通</code>；<code>crond</code> 与守护进程均存活。</p>
+<blockquote>
+<p><strong>教训</strong>：这两个 bug 在自用机上潜伏了几个月，因为系统表面能上网（守护进程的 HTTP 劫持检测兜住了），<br />
+只是"开机恢复慢"和"兜底机制形同虚设"不容易被察觉。<strong>改动开机链路后一定要做真实重启验证。</strong></p>
+</blockquote>
 <h3 id="_50">凭据安全</h3>
 <p><code>.claude/settings.local.json</code> 未被 .gitignore 忽略，内含一条历史命令记录带<strong>密码明文</strong>。<br />
 按仓库规则每次 <code>git add -A</code> 迟早会推上去 → 已替换为 <code>&lt;REDACTED&gt;</code> 并把 <code>.claude/</code> 加入 .gitignore。</p>
