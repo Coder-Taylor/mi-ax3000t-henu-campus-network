@@ -4223,8 +4223,86 @@ boot<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <h3 id="_50">凭据安全</h3>
 <p><code>.claude/settings.local.json</code> 未被 .gitignore 忽略，内含一条历史命令记录带<strong>密码明文</strong>。<br />
 按仓库规则每次 <code>git add -A</code> 迟早会推上去 → 已替换为 <code>&lt;REDACTED&gt;</code> 并把 <code>.claude/</code> 加入 .gitignore。</p>
+<h2 id="2026-10-10">2026-10-10（周五）— 待售机"一直弹登录页"排查 + 修掉两个脚本缺陷</h2>
+<h3 id="_51">一、现象</h3>
+<p>待售机（192.168.1.2）下设备上网一直被弹到校园门户登录页。</p>
+<h3 id="_52">二、三种拒绝的含义（重要，别再反复重试）</h3>
+<table>
+<thead>
+<tr>
+<th>第三步返回</th>
+<th>含义</th>
+<th>正确应对</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>帐号已经在线，不允许更多登陆</code></td>
+<td>该账号已有在线会话（<strong>含我们自己那条</strong>）。实测这套系统<strong>允许多设备同账号同时在线</strong>（账号主人的电脑与本路由器同时在网），此错误应理解为"拒绝重复登录已有会话"</td>
+<td>别重试；等数据通道恢复</td>
+</tr>
+<tr>
+<td><code>limit exceed ... Request Deny by ha.chinamobile.com</code></td>
+<td>短时间反复尝试触发<strong>运营商侧登录限流</strong></td>
+<td>停止重试，等自动解除（本次约 10 分钟）</td>
+</tr>
+<tr>
+<td><code>认证失败,原因:</code>（<strong>原因为空</strong>）</td>
+<td>当前 IP 有残留会话（08-30 记录过）</td>
+<td>当时解法是重启路由器（本次无效，见下）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_53">三、本次根因</h3>
+<ul>
+<li>校园侧的<strong>会话记录一直在</strong>（所以重新登录被拒"已经在线"——拒绝的是"重复登录"，<strong>不是</strong>"第二台设备"；本校园网允许多设备同账号并存），<br />
+  但会话的 <strong>HTTP 数据通道被掐了一段时间</strong> → 表现为"设备一直被弹登录页"</li>
+<li><strong>重启路由器无效</strong>：会话在校园侧，不在路由器上</li>
+<li>最终是<strong>校园侧自行恢复</strong>（不是脚本、也不是某次手动登录的功劳）</li>
+</ul>
 <blockquote>
-<p><strong>最后更新</strong>：2026-10-09<br />
+<p><strong>更正</strong>：本次排查一开始推断"这套系统不允许多设备共存"，后经实测确认<strong>是允许的</strong><br />
+（账号主人的电脑和本路由器同时在网）。</p>
+<p>⚠️ <strong>教训</strong>：遇到"已经在线 / 原因为空"这类错误，<strong>千万别反复重试</strong>——<br />
+会把账号推到运营商限流，反而拖慢恢复。这正是下面第 3 条要修的。</p>
+</blockquote>
+<h3 id="_54">四、修掉的两个脚本缺陷</h3>
+<p><strong>1. <code>check_http_portal</code> 依赖 <code>curl</code>（关键）</strong></p>
+<p>新刷的 ImmortalWrt <strong>不带 curl</strong>，<code>code=$(curl ...)</code> 永远为空 →<br />
+"会话过期"永远检测不到（日志一路"网络已连通"，用户却一直看到登录页）。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 改为 curl 可选：没有 curl 时退回 busybox wget + 门户特征串判断</span>
+<span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>curl<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">code</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s2">&quot;%{http_code}&quot;</span><span class="w"> </span>--max-time<span class="w"> </span><span class="m">6</span><span class="w"> </span>http://www.baidu.com<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$code</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;302&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+<span class="nv">body</span><span class="o">=</span><span class="k">$(</span>wget<span class="w"> </span>-q<span class="w"> </span>-O<span class="w"> </span>-<span class="w"> </span>-T<span class="w"> </span><span class="m">6</span><span class="w"> </span>http://www.baidu.com<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">3000</span><span class="k">)</span>
+<span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$body</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$body</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-qE<span class="w"> </span><span class="s1">&#39;usertemp|henu-jinming|wlanacname|wlanuserip&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+</code></pre></div>
+
+<p><strong>2. 特征串误判（自己踩的坑）</strong></p>
+<p>第一版用 <code>/portal/</code> 当特征串，结果<strong>真实百度页面</strong>里的工信部备案链接<br />
+<code>//www.beian.gov.cn/portal/registerSystemInfo</code> 就命中 →<br />
+守护进程会把<strong>正常状态误判成"被劫持"</strong>，每 5 分钟无谓重认证（又会触发运营商限流）。<br />
+→ 改严为校园门户皮肤特有的 <code>usertemp|henu-jinming|wlanacname|wlanuserip</code><br />
+（实测真实百度页命中数 = 0）。</p>
+<blockquote>
+<p><strong>教训</strong>：拿来做"异常特征"的字符串必须<strong>专属且稳定</strong>，别用 <code>/portal/</code> 这种通用词。</p>
+</blockquote>
+<p><strong>3. 认证重试退避</strong></p>
+<p>原来检测到劫持后每 60 秒重试一次 → 撞上运营商限流。<br />
+→ 改为最小间隔 <strong>300 秒</strong>；连续失败 3 次后改为 <strong>1800 秒</strong>。</p>
+<h3 id="_55">五、顺带</h3>
+<ul>
+<li><strong>手动校时</strong>：路由器没网时无法 NTP 同步，开机时钟是用 <code>/etc</code> 里最新文件时间凑出来的<br />
+  （本次慢了 2.5 小时）。第三步要传 <code>timestamp</code>，时钟太离谱有被拒风险</li>
+<li><code>full_auth</code> 里<strong>第一步/第二步改为不阻断</strong>：真正决定能否上网的是第三步 quickauth，<br />
+  实测遇到过 8088 接口连不上、但第三步能正常认证的情况</li>
+<li>服务器返回的 <code>first_auth</code> 空响应原来不算"网络层错误"（只认几个固定错误串）→ 已加上</li>
+</ul>
+<blockquote>
+<p><strong>最后更新</strong>：2026-10-10<br />
 <strong>完成状态</strong>：🎉 步骤0 + Phase 0-14 全部完成（含第二台待售机部署与两个潜伏 bug 修复）</p>
 </blockquote>
 

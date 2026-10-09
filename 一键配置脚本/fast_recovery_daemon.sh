@@ -28,11 +28,24 @@ check_route() {
 
 check_http_portal() {
     # 检测 HTTP 是否被校园网强制门户劫持（返回 0 = 被劫持，需重新认证）
-    local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://www.baidu.com 2>/dev/null)
-    if [ "$code" = "302" ]; then
-        return 0
+    # v2.2 加固：兼容没有 curl 的干净系统
+    #   —— 新刷的 ImmortalWrt 默认不带 curl，原来 code 永远为空，
+    #      导致"会话过期"永远检测不到（表现为：日志一路"网络已连通"，
+    #      但设备上网一直被弹到校园门户登录页）
+    local code body
+    if command -v curl >/dev/null 2>&1; then
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 6 http://www.baidu.com 2>/dev/null)
+        [ "$code" = "302" ] && return 0
+        return 1
     fi
+    # 无 curl：抓页面判断是否为校园门户页（真实页面不含这些特征串）
+    body=$(wget -q -O - -T 6 http://www.baidu.com 2>/dev/null | head -c 3000)
+    [ -z "$body" ] && return 1
+    # 注意：不要用 '/portal/' 这种通用词做特征 —— 真实百度页面里有工信部备案链接
+    #       //www.beian.gov.cn/portal/registerSystemInfo，会误判成门户页，
+    #       导致每 5 分钟无谓重认证（反而触发运营商限流）。
+    #       只认校园门户皮肤特有的串。
+    echo "$body" | grep -qE 'usertemp|henu-jinming|wlanacname|wlanuserip' && return 0
     return 1
 }
 
@@ -100,6 +113,7 @@ main_loop() {
     local fail_count=0
     local last_auth_time=0
     local http_check_count=0
+    local auth_fail_streak=0
 
     log "🚀 快速恢复守护进程启动 v2.0"
     log "   检测间隔: 1秒 | 信道: 自动跟随 STA"
@@ -111,12 +125,25 @@ main_loop() {
     while true; do
         if check_network; then
             http_check_count=$((http_check_count + 1))
-            if [ $http_check_count -ge 60 ] && check_http_portal; then
+            local now=$(date +%s)
+            # v2.2 退避：认证尝试之间至少间隔 auth_interval 秒
+            #   实测教训：检测到劫持后每 60 秒重试一次，会触发运营商侧
+            #   "limit exceed"（登录次数超限）把账号锁住，比不重试更糟。
+            local auth_interval=300
+            [ $auth_fail_streak -ge 3 ] && auth_interval=1800
+            if [ $http_check_count -ge 60 ] && check_http_portal && [ $((now - last_auth_time)) -ge $auth_interval ]; then
                 log "⚠️ 检测到 HTTP 被门户劫持（认证会话失效），触发重新认证..."
-                last_auth_time=0
                 http_check_count=0
+                last_auth_time=$now
                 /etc/campus_network/auto_login.sh --force &
-                sleep 3
+                sleep 8
+                if check_http_portal; then
+                    auth_fail_streak=$((auth_fail_streak + 1))
+                    log "   ❌ 认证后仍被劫持（连续 $auth_fail_streak 次；下次最小间隔 ${auth_interval}s）"
+                else
+                    auth_fail_streak=0
+                    log "   ✅ 认证成功，HTTP 已恢复"
+                fi
             fi
             if [ $fail_count -gt 0 ]; then
                 log "✅ 网络已恢复（失败次数: $fail_count）"

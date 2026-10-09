@@ -69,7 +69,8 @@ first_auth() {
         fi
 
         # 网络层错误 → 重试
-        if echo "$RESPONSE1" | grep -q "Operation not permitted\|Connection refused\|timed out\|Bad address"; then
+        # v3.1: 空响应也视为网络层错误重试（原来只认几个固定错误串，空响应直接放弃）
+        if [ -z "$RESPONSE1" ] || echo "$RESPONSE1" | grep -q "Operation not permitted\|Connection refused\|timed out\|Bad address"; then
             log "⚠️ 网络层错误，等待 3 秒后重试 ($((retry+1))/3)..."
             sleep 3
             retry=$((retry + 1))
@@ -123,25 +124,26 @@ check_network() {
 
 full_auth() {
     log "开始完整认证流程..."
+    # v3.1: 第一步(发起登录)/第二步(校验) 只作诊断，失败不阻断
+    #   —— 真正决定能否上网的是第三步 quickauth。实测遇到过
+    #      第一步接口(8088)连不上、但第三步能正常认证的情况，
+    #      旧逻辑会因此直接放弃认证。
     if first_auth; then
         sleep 2
-        if second_auth; then
-            sleep 2
-            if portal_auth; then
-                log "🎉 所有认证步骤成功完成"
-                return 0
-            else
-                log "❌ 第三步认证失败"
-                return 1
-            fi
-        else
-            log "❌ 第二步认证失败"
-            return 1
-        fi
     else
-        log "❌ 第一步认证失败"
-        return 1
+        log "⚠️ 第一步失败（不阻断），继续尝试认证..."
     fi
+    if second_auth; then
+        sleep 2
+    else
+        log "⚠️ 第二步失败（不阻断），继续尝试门户认证..."
+    fi
+    if portal_auth; then
+        log "🎉 所有认证步骤成功完成"
+        return 0
+    fi
+    log "❌ 第三步门户认证失败"
+    return 1
 }
 
 # 新增：恢复路由
