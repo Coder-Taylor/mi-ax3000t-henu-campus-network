@@ -4238,7 +4238,7 @@ boot<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <tbody>
 <tr>
 <td><code>帐号已经在线，不允许更多登陆</code></td>
-<td>该账号已有在线会话（<strong>含我们自己那条</strong>）。实测这套系统<strong>允许多设备同账号同时在线</strong>（账号主人的电脑与本路由器同时在网），此错误应理解为"拒绝重复登录已有会话"</td>
+<td>该账号已有在线会话（<strong>含我们自己那条</strong>）。此错误应理解为"拒绝重复登录已有会话"</td>
 <td>别重试；等数据通道恢复</td>
 </tr>
 <tr>
@@ -4261,8 +4261,11 @@ boot<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <li>最终是<strong>校园侧自行恢复</strong>（不是脚本、也不是某次手动登录的功劳）</li>
 </ul>
 <blockquote>
-<p><strong>更正</strong>：本次排查一开始推断"这套系统不允许多设备共存"，后经实测确认<strong>是允许的</strong><br />
-（账号主人的电脑和本路由器同时在网）。</p>
+<p><strong>关于账号的并发会话限制（重要）</strong>：本次用的测试账号是<strong>特殊号</strong>，实测<strong>允许多设备同账号同时在线</strong><br />
+（账号主人的电脑 + 本路由器同时在网）；而用户的其他<strong>普通账号不允许</strong>——一登录就把前一个顶掉/被拒。<br />
+校园网对<strong>不同账号的并发会话数限制不同</strong>，排查时别把某个账号的宽松行为当成普遍规律。<br />
+对交付的意义：买家用自己的<strong>普通账号</strong>时，<strong>手机/电脑上别再登同一个号</strong>，否则路由器会被顶下线。<br />
+本次排查一开始的推断（"不允许多设备共存"）就是被这个特殊号误导的。</p>
 <p>⚠️ <strong>教训</strong>：遇到"已经在线 / 原因为空"这类错误，<strong>千万别反复重试</strong>——<br />
 会把账号推到运营商限流，反而拖慢恢复。这正是下面第 3 条要修的。</p>
 </blockquote>
