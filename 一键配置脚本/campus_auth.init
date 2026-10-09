@@ -1,0 +1,35 @@
+#!/bin/sh /etc/rc.common
+# ==========================================================
+#  校园网开机自启动认证（一次性任务）
+#  START=99 确保在网络和 WiFi 就绪后最后执行
+#
+#  v4 (2026-10-09)：改成"非 procd"的一次性脚本
+#   - v3 用 procd + `respawn 0`，实测 procd 把 threshold=0 当成"永远重启"，
+#     boot_auth.sh 每 6 秒被拉起一次（无限循环）→ 日志刷屏 + 反复请求认证服务器
+#   - boot_auth.sh 只需跑一次（它内部会等网络就绪，最长 10 分钟）
+#   - 用 `&` 后台执行，不阻塞 rcS 启动流程
+#
+#  两个必须保留的要点（v2/v3 踩过的坑）：
+#   ① boot() 里必须调用 start —— rc.common 默认 `boot(){ start "$@"; }`，
+#      自定义 boot() 覆盖后若不调 start，开机会什么都不执行
+#      （表现为"开机认证从未跑过"，全靠 fast_recovery_daemon 兜底）
+#   ② 不要用 `procd_set_param command /bin/sh -c "多行脚本"` ——
+#      $(seq 1 12) 在注册时被展开成换行，命令执行返回 2
+# ==========================================================
+
+START=99
+
+start() {
+	# 后台执行；boot_auth.sh 内部等待网络就绪（最长 10 分钟）后执行认证
+	/etc/campus_network/boot_auth.sh &
+}
+
+boot() {
+	# 开机早期先跑一次路由看门狗，加速 STA 重连
+	/etc/campus_network/route_watchdog.sh
+	start
+}
+
+stop() { :; }
+reload() { :; }
+restart() { start; }

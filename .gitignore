@@ -45,3 +45,6 @@ System Volume Information/
 # === 临时文件 ===
 *.tmp
 *.log
+
+# === Claude Code 本地设置（可能含敏感命令记录，勿上传）===
+.claude/

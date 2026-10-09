@@ -1,0 +1,11 @@
+# 校园网自动认证 — 每 5 分钟检测一次（认证过期兜底）
+*/5 * * * * /etc/campus_network/auto_login.sh
+
+# 每周一/周四凌晨 4 点自动重启（保持长期稳定性）
+0 4 * * 1,4 /sbin/reboot
+
+# ⚠️ 切勿添加 @reboot / @daily 等 @ 关键字！
+#    本机的 busybox crond 未启用 @ 关键字支持，遇到 @ 行会直接崩溃退出
+#    并进入 crash loop（procd 重启 6 次后放弃），连上面的 */5 兜底认证也一起失效。
+#    2026-10-09 实测确认：仅 "@reboot sleep 5; ..." 一行即可让 crond 秒退。
+#    开机认证由 /etc/init.d/campus_auth (START=99) 调用 boot_auth.sh 负责。

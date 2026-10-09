@@ -6,6 +6,15 @@
 #  使用：在路由器 SSH 中运行此脚本
 #        sh /path/to/auto_config.sh
 # ============================================================
+# ============================================================
+# [!] 2026-10-09 维护提示
+#   本文件内嵌的脚本副本可能滞后于同目录的独立脚本文件。权威版本为：
+#     auto_login.sh.template / fast_recovery_daemon.sh /
+#     boot_auth.sh / route_watchdog.sh / dns_fix.sh
+#   本次修正：所有网络检测目标 8.8.8.8 -> 223.5.5.5
+#   （校园网屏蔽 8.8.8.8 的 ICMP，用它侦测会永远误判"网络不通"，
+#     导致反复触发认证、小包卡顿）
+# ============================================================
 
 set -e
 
@@ -91,7 +100,7 @@ step0_check() {
     step_info "overlay 可用空间: ${AVAIL}MB"
 
     # 检查外网
-    if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+    if ping -c 1 -W 2 223.5.5.5 >/dev/null 2>&1; then
         step_ok "外网连接正常"
     else
         step_warn "外网不通——稍后配置好校园网认证后才能上网"
@@ -440,7 +449,7 @@ preflight_check() {
 }
 
 get_auth_params() {
-    WAN_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+    WAN_IP=$(ip route get 223.5.5.5 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
     TIMESTAMP=$(($(date +%s) * 1000))
     UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
     echo "$WAN_IP $TIMESTAMP $UUID"
@@ -520,7 +529,7 @@ portal_auth() {
 }
 
 check_network() {
-    ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1
+    ping -c 2 -W 3 223.5.5.5 > /dev/null 2>&1
 }
 
 full_auth() {
@@ -625,7 +634,7 @@ SCRIPT_EOF
     /etc/campus_network/auto_login.sh
 
     echo ""
-    if ping -c 2 -W 3 8.8.8.8 >/dev/null 2>&1; then
+    if ping -c 2 -W 3 223.5.5.5 >/dev/null 2>&1; then
         step_ok "认证测试通过！外网已连通"
     else
         step_warn "认证可能未成功，请查看日志: cat /tmp/campus_network.log"

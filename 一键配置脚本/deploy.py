@@ -10,6 +10,15 @@ AX3000T 校园网一键部署工具 v3.0
   - python deploy.py lazy → 🤖 懒人一键模式（全自动，只需填密码）
   - python deploy.py wifi → 快速切换校园网
 """
+# ============================================================
+# [!] 2026-10-09 维护提示
+#   本文件内嵌的脚本副本可能滞后于同目录的独立脚本文件。权威版本为：
+#     auto_login.sh.template / fast_recovery_daemon.sh /
+#     boot_auth.sh / route_watchdog.sh / dns_fix.sh
+#   本次修正：所有网络检测目标 8.8.8.8 -> 223.5.5.5
+#   （校园网屏蔽 8.8.8.8 的 ICMP，用它侦测会永远误判"网络不通"，
+#     导致反复触发认证、小包卡顿）
+# ============================================================
 import subprocess, os, sys, json, time, re, base64, shutil, io
 from pathlib import Path
 from datetime import datetime
@@ -460,7 +469,7 @@ CAMPUS_CODE="{campus_code}"
 LOG_FILE="/tmp/campus_network.log"
 log() {{ echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOG_FILE; }}
 get_auth_params() {{
-    WAN_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}}')
+    WAN_IP=$(ip route get 223.5.5.5 2>/dev/null | awk '{{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}}')
     TIMESTAMP=$(($(date +%s) * 1000))
     UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
     echo "$WAN_IP $TIMESTAMP $UUID"
@@ -491,7 +500,7 @@ portal_auth() {{
     R=$(wget -q -O - --header="Referer: http://172.29.35.36:6060/" --header="Cookie: macAuth=; ABMS=362ee66b-fa1f-4ef9-a651-bfd9d61d194a" -T 10 "http://172.29.35.36:6060/quickauth.do?userid=${{USERNAME}}%40henuyd&passwd=${{PASSWORD}}&wlanuserip=${{IP}}&wlanacname=HD-SuShe-ME60&wlanacIp=172.22.254.253&timestamp=${{TS}}&uuid=${{UD}}" 2>&1)
     log "第三步响应: $R"; echo "$R" | grep -q '"message":"认证成功"'
 }}
-check_network() {{ ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1; }}
+check_network() {{ ping -c 2 -W 3 223.5.5.5 > /dev/null 2>&1; }}
 full_auth() {{
     log "开始完整认证流程..."
     if first_auth; then sleep 2; if second_auth; then sleep 2; if portal_auth; then log "所有步骤完成"; return 0; fi; fi; fi
@@ -517,7 +526,7 @@ log "路由丢失！"
 if check_sta; then ifup wwan 2>/dev/null; sleep 3
 else wifi reload 2>/dev/null; sleep 5; ifup wwan 2>/dev/null; sleep 3; fi
 check_route && log "看门狗恢复成功"
-if ! ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1; then /etc/campus_network/auto_login.sh & fi'''
+if ! ping -c 2 -W 3 223.5.5.5 > /dev/null 2>&1; then /etc/campus_network/auto_login.sh & fi'''
 
 INITD = '''#!/bin/sh /etc/rc.common
 START=99
@@ -536,7 +545,7 @@ CAMPUS_CHANNEL="5260"
 log() {{ echo "[$(date '+%Y-%m-%d %H:%M:%S')] [FastRecovery] $1" >> $LOG_FILE; }}
 check_sta_connected() {{ iw dev $STA_IFACE link 2>/dev/null | grep -q "Connected"; }}
 check_route() {{ ip route show default 2>/dev/null | grep -q "$STA_IFACE"; }}
-check_network() {{ ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1; }}
+check_network() {{ ping -c 1 -W 2 223.5.5.5 > /dev/null 2>&1; }}
 fast_sta_reconnect() {{
     log "快速重连 STA..."
     iw dev $STA_IFACE disconnect 2>/dev/null; sleep 0.5
@@ -611,8 +620,10 @@ def deploy_initd():
     return ok_r and "DEPLOYED" in _
 
 def deploy_cron():
+    # [!] 2026-10-09 修正：不要写 @reboot —— 本机 busybox crond 不支持 @ 关键字，
+    #     遇到会直接崩溃退出并进入 crash loop，连带 */5 兜底认证一起失效。
+    #     开机认证由 /etc/init.d/campus_auth (START=99) 调 boot_auth.sh 负责。
     cron = """*/5 * * * * /etc/campus_network/auto_login.sh
-@reboot sleep 30; /etc/campus_network/auto_login.sh
 0 4 * * 1,4 /sbin/reboot
 """
     enc = base64.b64encode(cron.encode()).decode()
@@ -870,7 +881,7 @@ def find_router():
 
 def test_internet():
     """检测外网连通性"""
-    ok_r, out = ssh.run("ping -c 1 -W 3 8.8.8.8", timeout=5)
+    ok_r, out = ssh.run("ping -c 1 -W 3 223.5.5.5", timeout=5)
     return ok_r and ("1 received" in out or "1 packets received" in out or "min/avg/max" in out)
 
 # ═══════════════════════════════════════════════════════════════

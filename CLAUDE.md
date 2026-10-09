@@ -43,6 +43,9 @@
 步骤12: ✅ WireGuard VPN 客户端 + NTP 时间同步 + 流量监控(nlbwmon) + 网络质量监控(collectd)
 Phase12: ✅ 修复启动后认证循环失败（v2.0守护进程 + v3.0认证脚本，恢复时间 8min→3min）
 步骤13: ✅ 设备重连断联修复 v3（2.4G/5G hostapd 配置对齐 + DHCP租约168h + UAPSD关闭 + PMKSA缓存开启）
+Phase14: ✅ 第二台（待售机 192.168.1.2）部署 + 挖出并修复两个潜伏 bug
+         （① busybox crond 不支持 `@reboot`，写了会让 crond 崩溃 + */5 兜底失效
+          ② campus_auth 的 boot() 覆盖了 rc.common 默认的 `boot(){ start; }`，开机认证从未执行）
 ```
 
 ## 当前运行状态
@@ -57,6 +60,15 @@ Phase12: ✅ 修复启动后认证循环失败（v2.0守护进程 + v3.0认证�
 - **NTP**: sysntpd → ntp.tencent.com + ntp1.aliyun.com + ntp.ntsc.ac.cn + cn.ntp.org.cn
 - **流量监控**: nlbwmon（30s刷新, 24h提交, LuCI Bandwidth Monitor）
 - **性能监控**: collectd + RRDtool（CPU/接口/负载/内存/WiFi/Ping, LuCI Statistics）
+
+### 第二台：部署机（2026-10-09 部署，待售）
+- **硬件**: AX3000T **V2**（MT7981 + **AN8855** 交换机 + **Winbond** 128MiB SPI-NAND）
+- **地址**: `http://192.168.1.2` / `ssh ax3000t2`（密钥）｜ 后台 `root`（密码见 credentials.txt）
+- **WiFi**: `EDG无畏契约河南分部` + `-5G`，WPA2（密码见 credentials.txt）
+- **WAN**: 5G STA → henu-student，5745MHz(ch149)，信号 -54dBm
+- **校园网**: 用测试账号（见 credentials.txt）；**交付前需改成使用者的账号**，详见 `文档/路由器当前状态.md`
+- **已装**: 认证脚本全套（v3.0 + 守护进程 v2.1）+ DNS 四层修复 + DHCP 168h + Argon 主题（含自定义壁纸）
+- **未装**: WireGuard / adblock / nlbwmon / collectd
 
 ## 关键信息
 - 路由器: `192.168.1.1` / `ssh ax3000t`（免密）
@@ -127,6 +139,12 @@ Phase12: ✅ 修复启动后认证循环失败（v2.0守护进程 + v3.0认证�
 - NTP 同步状态: `date` + `logread | grep ntp`
 - 流量监控为空: 检查 `list local_network 'lan'` 是否在 nlbwmon 配置中
 - collectd 图表: Statistics → Graphs（重启后历史丢失是正常的，/tmp 是内存盘）
+- **cron 整个失效/兜底认证不跑**: `ps | grep [c]rond` —— 若 crond 反复崩溃，检查 crontab 是否含 `@reboot`
+  （本机 busybox crond 未编译 @ 关键字支持，遇到即崩溃并进入 crash loop，连 `*/5` 也一起失效）
+- **开机认证没执行**: `grep BootAuth /tmp/campus_network.log`；确认 `/etc/init.d/campus_auth` 的
+  `boot()` 里有 `start "$@"`（rc.common 默认 `boot(){ start "$@"; }` 被自定义 boot 覆盖后，开机不会注册 procd 实例）
+- **改硬件/刷机前确认版本**: 出现 `an8855-switch` = V2（`mt7530-mdio probe failed` 在 V2 上是正常的）；
+  V1/V2 的 u-boot 不通用，另注意 RD03v2 是高通 IPQ5018 版本
 
 ## 文件导航
 
@@ -151,8 +169,13 @@ AX3000T刷机校园网/
 │   ├── !PUSH_ALL.bat              ← 双击推送到 Gitee + GitHub（双远程备用）
 │   ├── deploy.py                  ← 一键部署工具 v3.0（懒人模式）
 │   ├── auto_config.sh             ← 路由器一键配置脚本
-│   ├── fast_recovery_daemon.sh    ← 快速恢复守护进程 v2.0（秒级断网恢复）
-│   └── dns_fix.sh                 ← 校园内部网站 DNS 修复脚本
+│   ├── auto_login.sh.template     ← 认证脚本模板（占位符版，真实密码不入库）⭐权威版本
+│   ├── fast_recovery_daemon.sh    ← 快速恢复守护进程 v2.1（秒级断网恢复 + HTTP门户检测）
+│   ├── boot_auth.sh               ← 开机等网络就绪再认证（最长10分钟）
+│   ├── route_watchdog.sh          ← 路由看门狗（开机早期加速 STA 重连）
+│   ├── campus_auth.init           ← 开机认证服务（注意 boot() 必须调 start）
+│   ├── crontab.root               ← crontab 模板（⚠️ 严禁 @reboot）
+│   └── dns_fix.sh                 ← 校园内部网站 DNS 修复脚本 v2.2
 │
 ├── 监控工具/                       ← 网络监控工具
 │   ├── !MONITOR.bat               ← 双击打开监控菜单

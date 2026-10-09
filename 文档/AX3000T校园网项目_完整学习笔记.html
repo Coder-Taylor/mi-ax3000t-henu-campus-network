@@ -4036,9 +4036,163 @@ uci<span class="w"> </span>commit<span class="w"> </span>dhcp
 </code></pre></div>
 
 <hr />
+<hr />
+<h1 id="phase-142026-08-30-2026-10-09">Phase 14：后续维护与第二台部署（2026-08-30 ~ 2026-10-09）</h1>
 <blockquote>
-<p><strong>最后更新</strong>：2026-06-20<br />
-<strong>完成状态</strong>：🎉 步骤0 + Phase 0-13 + 附录：DNS全量扫描 全部完成</p>
+<p>本文补充 06-20 之后的维护工作：账号切换、"大包正常小包卡"根因修复、会话过期检测盲区、<br />
+以及第二台 AX3000T（待售机）的完整部署。</p>
+</blockquote>
+<h2 id="141-08-30">14.1 校园网认证账号切换（08-30）</h2>
+<p>切换认证账号后，quickauth 第三步返回"认证失败,原因:"（<strong>原因为空</strong>），新旧账号都失败。</p>
+<p><strong>根因</strong>：当前 IP 上残留着旧账号的认证会话，校园网拒绝新会话。</p>
+<p><strong>修复</strong>：重启路由器清除残留会话 → 新账号三步全通。</p>
+<p><strong>排障要点</strong>：<br />
+- <code>check-only</code>（<code>172.29.35.27:8882</code>）可验证"账号+密码+运营商后缀"组合<br />
+- 快速认证失败且原因为空 → 优先重启路由器清除残留会话</p>
+<h2 id="142-08-31">14.2 "大包正常、小包卡顿"的根因（08-31）⭐</h2>
+<p><strong>现象</strong>：下载能跑满带宽，但微信发消息、游戏等小包卡 1-2 分钟。</p>
+<p><strong>根因</strong>：校园网<strong>屏蔽了对 <code>8.8.8.8</code> 和 <code>114.114.114.114</code> 的 ICMP</strong>（实测 100% 丢包），<br />
+但脚本的 <code>check_network</code> 全都用 <code>ping 8.8.8.8</code> 判断"网络是否通"：</p>
+<div class="codehilite"><pre><span></span><code>永远误判&quot;网络不通&quot; → 反复触发认证（cron 每5分钟 + 守护进程每秒检测）
+→ 认证切换/失败期间间歇性断流 1-2 分钟 → 小包卡顿
+（大包靠 TCP 重传掩盖了这个问题，所以只有小包能感觉到）
+</code></pre></div>
+
+<p><strong>修复</strong>：3 个脚本共 4 处检测目标 <code>8.8.8.8</code> → <code>223.5.5.5</code>（阿里 DNS，实测 0% 丢包、22ms）。</p>
+<p><strong>验证</strong>：路由器 curl 从清华 pypi 镜像下载 731MB（实测 58-92Mbps 满载），同时打 100 次小包 ping：<br />
+平均 25.7ms（空闲 23.1ms，仅 +2.6ms）、最大 79.5ms、0 丢包 → <strong>CAKE 流控的小包保护完好</strong>。</p>
+<p><strong>踩坑记录</strong>：<br />
+- busybox 的 <code>sleep</code> 不支持小数，<code>ping</code> 不支持 <code>-f</code>/<code>-i 0.2</code><br />
+- busybox <code>wget</code> 处理 HTTPS 跨主机重定向会段错误 → 路由器上测速/并发请用 <code>curl</code><br />
+- 镜像站对非浏览器 UA 常返回 403/404；清华 pypi simple 页可用</p>
+<h2 id="143-08-31">14.3 认证会话过期的检测盲区（08-31）</h2>
+<p><strong>问题</strong>：会话过期时校园网<strong>只劫持 HTTP</strong>（302 跳转到 WISPr 门户），<strong>ICMP 仍然放行</strong>。<br />
+守护进程 ping 得通 → 误判"网络正常" → 不重新认证 → 用户打开网页被弹到登录页。</p>
+<p><strong>修复</strong>：<br />
+1. 守护进程新增 <code>check_http_portal()</code>：用 curl 检测百度是否被 302 劫持（被劫持 = 会话失效）<br />
+2. 主循环每 60 秒检测一次，发现即触发重新认证<br />
+3. <code>auto_login.sh</code> 新增 <code>--force</code> 参数（跳过网络检测直接完整认证）</p>
+<h2 id="144-08-31">14.4 开机恢复链路优化（08-31）</h2>
+<ol>
+<li><code>auto_login.sh</code> preflight：认证服务器 ping <strong>重试 3 次（间隔 3 秒）</strong>——避免 WiFi 刚就绪的链路抖动直接判失败</li>
+<li><code>fast_recovery_daemon.sh</code> v2.1：<strong>持续 15 秒未恢复且路由存在时，先 DHCP 续租</strong>（比 30 秒完整重置温和且有效）</li>
+<li>新增 <code>boot_auth.sh</code>：开机<strong>等待网络就绪（最长 10 分钟）后再认证</strong>，替代固定 <code>sleep 30</code></li>
+</ol>
+<h2 id="145-ax3000t-10-09">14.5 第二台 AX3000T 部署（10-09）</h2>
+<p>第二台机器刷 ImmortalWrt 24.10.5 后部署为可交付系统，管理地址 <code>192.168.1.2</code>（避开自用机 <code>.1</code>）。</p>
+<h3 id="_47">硬件版本怎么判断</h3>
+<div class="codehilite"><pre><span></span><code>[3.024850] an8855-switch ...: Link is Up - 2.5Gbps/Full     ← 交换芯片是 Airoha AN8855
+[2.696471] mt7530-mdio: probe of mdio-bus:1f failed         ← MT7531 不存在（v1 才有）
+</code></pre></div>
+
+<p>→ <strong>V2</strong>。dmesg 里那句 <code>mt7530 probe failed</code> 在 V2 上是正常现象（DTS 同时声明了两个 switch 节点）。</p>
+<p>V2 世代内部按 <strong>NAND 厂商</strong>分批，对应最低固件要求：</p>
+<table>
+<thead>
+<tr>
+<th>NAND</th>
+<th>最低 OpenWrt 版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ESMT</td>
+<td>23.05.4</td>
+</tr>
+<tr>
+<td>Winbond</td>
+<td>24.10.1</td>
+</tr>
+<tr>
+<td>Foresee</td>
+<td>24.10.3</td>
+</tr>
+</tbody>
+</table>
+<p>另注意：社区另有代号 <strong>RD03v2（高通 IPQ5018）</strong> 的版本，与 MT7981 版固件互不通用。</p>
+<h3 id="_48">部署顺序（含一个坑）</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 先装公钥（新刷的 ImmortalWrt root 无密码，dropbear 允许 none 认证，能直接登录）</span>
+cat<span class="w"> </span>ax3000t_rsa.pub<span class="w"> </span><span class="p">|</span><span class="w"> </span>ssh<span class="w"> </span>root@&lt;ip&gt;<span class="w"> </span><span class="s2">&quot;cat &gt; /etc/dropbear/authorized_keys&quot;</span>
+<span class="c1"># 2. 再改管理 IP</span>
+uci<span class="w"> </span><span class="nb">set</span><span class="w"> </span>network.lan.ipaddr<span class="o">=</span><span class="s1">&#39;192.168.1.2&#39;</span><span class="p">;</span><span class="w"> </span>uci<span class="w"> </span>commit<span class="w"> </span>network<span class="p">;</span><span class="w"> </span>/etc/init.d/network<span class="w"> </span>reload
+<span class="c1"># 3. 最后设密码（顺序反了会把自己锁在门外）</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n%s\n&quot;</span><span class="w"> </span><span class="s1">&#39;&lt;pw&gt;&#39;</span><span class="w"> </span><span class="s1">&#39;&lt;pw&gt;&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>passwd<span class="w"> </span>root
+</code></pre></div>
+
+<h3 id="check-only">账号验证：check-only 不是判官 ⭐</h3>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th><code>&lt;学号&gt;</code></th>
+<th><code>&lt;学号&gt;ls</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第二步 check-only</td>
+<td>✅ SUCCESS</td>
+<td>✅ SUCCESS</td>
+</tr>
+<tr>
+<td><strong>第三步 quickauth</strong></td>
+<td>❌ 被移动侧拒绝</td>
+<td>✅ <strong>认证成功</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>check-only</code> 对账号变体<strong>容错</strong>，只测它会把无效账号判成有效。真正判定在第三步<br />
+（校园 AAA + 运营商绑定查询）。<strong>验证凭据必须跑完整三步。</strong></p>
+<h3 id="bug">挖出的两个潜伏 bug（自用机同样中招）🔴</h3>
+<p><strong>bug 1：busybox crond 不支持 <code>@reboot</code>，会让整个 cron 崩掉</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="nv">crond</span><span class="w"> </span><span class="ss">(</span><span class="nv">busybox</span><span class="w"> </span><span class="mi">1</span>.<span class="mi">36</span>.<span class="mi">1</span><span class="ss">)</span><span class="w"> </span><span class="nv">started</span>,<span class="w"> </span><span class="nv">log</span><span class="w"> </span><span class="nv">level</span><span class="w"> </span><span class="mi">5</span><span class="w">      </span>←<span class="w"> </span>每<span class="w"> </span><span class="mi">5</span><span class="w"> </span>秒一次
+<span class="nv">procd</span>:<span class="w"> </span><span class="nv">Instance</span><span class="w"> </span><span class="nv">cron</span>::<span class="nv">instance1</span><span class="w"> </span><span class="nv">s</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">crash</span><span class="w"> </span><span class="k">loop</span><span class="w"> </span><span class="mi">6</span><span class="w"> </span><span class="nv">crashes</span>
+</code></pre></div>
+
+<p>逐行二分（crontab 只留一行 → 重启 cron → 看进程是否存活）确认：<strong>只要含 <code>@reboot</code> 行，crond 立即退出</strong>。<br />
+本机 busybox 未编译 <code>FEATURE_CROND_SPECIAL_TIMES</code>，无法解析 <code>@</code> 关键字。</p>
+<p><strong>连带后果</strong>：<code>*/5</code> 那条"认证过期兜底"也一起失效——因为整个 crond 根本没跑。</p>
+<p><strong>修复</strong>：crontab 删除 <code>@reboot</code>，开机认证交给 <code>campus_auth</code>。</p>
+<p><strong>bug 2：campus_auth 的开机认证从未执行过</strong></p>
+<div class="codehilite"><pre><span></span><code>&quot;exit_code&quot;: 2,
+&quot;command&quot;: [&quot;/bin/sh&quot;, &quot;-c&quot;, &quot;...for i in 1\n2\n3\n...\n12; do...&quot;]
+</code></pre></div>
+
+<p>旧版用 <code>procd_set_param command /bin/sh -c "多行脚本"</code>，<code>$(seq 1 12)</code> 在注册时被展开成<br />
+<strong>换行分隔</strong>的数字串，procd 记录的这条命令执行返回 2 —— 服务从未真正跑过认证。</p>
+<p><strong>但修掉上面这层后，开机仍然不执行</strong>——继续挖出第二层：</p>
+<p><code>/etc/rc.common</code> 的默认 <code>boot()</code> 是 <code>boot() { start "$@"; }</code>，而旧脚本自定义了 <code>boot()</code><br />
+（只调 <code>route_watchdog.sh</code>），<strong>覆盖掉了默认行为</strong>。开机时 rcS 调用的是 <code>boot</code> 而不是 <code>start</code>，<br />
+所以 procd 实例根本不注册。手动 <code>/etc/init.d/campus_auth start</code> 能跑通，因此一直没暴露。</p>
+<p>也就是说开机认证一直是 <code>fast_recovery_daemon</code> 兜住的（这也是开机恢复要几分钟的原因）。</p>
+<p><strong>修复</strong>（三层都要治）：</p>
+<div class="codehilite"><pre><span></span><code><span class="ch">#!/bin/sh /etc/rc.common</span>
+<span class="c1"># 最终版：非 procd 的一次性脚本（v4）</span>
+<span class="nv">START</span><span class="o">=</span><span class="m">99</span>
+
+start<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>/etc/campus_network/boot_auth.sh<span class="w"> </span><span class="p">&amp;</span><span class="w">      </span><span class="c1"># 后台执行；它内部会等网络就绪（最长10分钟）</span>
+<span class="o">}</span>
+
+boot<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>/etc/campus_network/route_watchdog.sh<span class="w">   </span><span class="c1"># 早期加速 STA 重连</span>
+<span class="w">    </span>start<span class="w">                                    </span><span class="c1"># 必须调用，否则覆盖了默认 boot(){ start &quot;$@&quot;; }</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p><strong>第三层坑</strong>：修好前两层、改用 procd + <code>respawn 0</code> 之后，procd 把 <code>threshold=0</code><br />
+理解成"<strong>永远重启</strong>"——<code>boot_auth.sh</code> 每 6 秒被拉起一次（无限循环：日志刷屏 + 反复请求认证服务器）。<br />
+用 <code>ubus call service list</code> 看到 <code>running: true</code> 但 pid 一直在变才发现。<br />
+最终<strong>放弃 procd</strong>，改成上面这种一次性脚本（跑完即退出，没有常驻实例可重启）。</p>
+<h3 id="_49">守护进程信道锁修正</h3>
+<p><code>CAMPUS_CHANNEL="5260"</code> 与校园 AP 实际信道 <strong>5745MHz（ch149）</strong> 不符，<br />
+<code>iw connect henu-student 5260</code> 必然失败 → 改成 <code>CAMPUS_CHANNEL=""</code>（不带信道参数 = 自动跟随）。</p>
+<h3 id="_50">凭据安全</h3>
+<p><code>.claude/settings.local.json</code> 未被 .gitignore 忽略，内含一条历史命令记录带<strong>密码明文</strong>。<br />
+按仓库规则每次 <code>git add -A</code> 迟早会推上去 → 已替换为 <code>&lt;REDACTED&gt;</code> 并把 <code>.claude/</code> 加入 .gitignore。</p>
+<blockquote>
+<p><strong>最后更新</strong>：2026-10-09<br />
+<strong>完成状态</strong>：🎉 步骤0 + Phase 0-14 全部完成（含第二台待售机部署与两个潜伏 bug 修复）</p>
 </blockquote>
 
 <div style="text-align:center;color:#94a3b8;font-size:0.85em;margin-top:3em;padding-top:1em;border-top:1px solid #e2e8f0;">
