@@ -143,6 +143,9 @@ Phase14: ✅ 第二台（待售机 192.168.1.2）部署 + 挖出并修复两个�
   （本机 busybox crond 未编译 @ 关键字支持，遇到即崩溃并进入 crash loop，连 `*/5` 也一起失效）
 - **开机认证没执行**: `grep BootAuth /tmp/campus_network.log`；确认 `/etc/init.d/campus_auth` 的
   `boot()` 里有 `start "$@"`（rc.common 默认 `boot(){ start "$@"; }` 被自定义 boot 覆盖后，开机不会注册 procd 实例）
+- **手机端视频/GIF 转圈**: 先看 `/overlay/probe.log`（探针每分钟测 4 个视频站点，异常时记现场）；
+  再看 `logread | grep -i 'due to inactivity'` —— 手机息屏 5 分钟被 hostapd 以空闲为由踢掉，
+  唤醒后重新关联会卡一两秒。已把 `max_inactivity` 改为 86400（重启后生效）
 - **改硬件/刷机前确认版本**: 出现 `an8855-switch` = V2（`mt7530-mdio probe failed` 在 V2 上是正常的）；
   V1/V2 的 u-boot 不通用，另注意 RD03v2 是高通 IPQ5018 版本
 
@@ -181,6 +184,7 @@ AX3000T刷机校园网/
 │   ├── !MONITOR.bat               ← 双击打开监控菜单
 │   ├── monitor.py                 ← 实时监控 + 压力测试 + 对比（Python 三合一）
 │   ├── gen_stress_image.py        ← 压力测试结果图表生成
+│   ├── probe_stall.sh             ← 卡顿探针（每分钟测视频站点，异常时记现场到 /overlay/probe.log）
 │   └── test_results/              ← 自动保存的 JSON 测试数据
 │
 ├── 推广帖子/                        ← 小红书/抖音/QQ频道推广文案
