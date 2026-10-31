@@ -9,7 +9,6 @@ credentials.txt
 *.trx
 *.ubi
 *.zip
-*.rar
 *.7z
 
 # === 归档目录（旧固件/旧文件/一次性扫描输出） ===
@@ -48,3 +47,7 @@ System Volume Information/
 
 # === Claude Code 本地设置（可能含敏感命令记录，勿上传）===
 .claude/
+
+# === 教程目录（本地保留，不入库；只入库打好的 rar，走 Git LFS）===
+/小米AX3000T刷机教程openwrt大分区版/
+/小米AX3000T刷机教程openwrt大分区版-old/
