@@ -5,7 +5,7 @@
 >
 > 🎯 目标读者：有基本命令行概念的同学，想刷路由器实现校园网自动认证。
 >
-> ✨ 配套资源：[开发日志（按 Phase）](./开发日志.md) | [从零开始教程](./从零开始教程.md)
+> ✨ 配套资源：[开发日志（按 Phase）](./开发日志.md) | [刷机指南](./刷机指南.md) | [日常使用](./日常使用.md) | [排障手册](./排障手册.md)
 
 ---
 
@@ -359,7 +359,7 @@ auto_login.sh
 ├── first_auth()          ← 第一步 + 重试机制（最多3次）
 ├── second_auth()         ← 第二步
 ├── portal_auth()         ← 第三步（带加密参数）
-├── check_network()       ← 认证后验证（ping 8.8.8.8）
+├── check_network()       ← 认证后验证（ping 223.5.5.5）
 ├── recover_route()       ← 路由丢失时自动恢复
 └── main()                ← 主流程（检测→恢复→认证）
 ```
@@ -489,6 +489,11 @@ while true; do
     sleep 1
 done
 ```
+
+> ⚠️ **这段是 2026-06-08 的原始设计，检测目标后来改了。**
+> 校园网屏蔽 `8.8.8.8` 的 ICMP，用它判断会导致"永远误判断网 → 反复认证 → 小包卡顿"。
+> 现版本（v2.2）用 `223.5.5.5`，并且加了 HTTP 门户劫持检测、分级恢复、认证退避。
+> 最新逻辑见 `一键配置脚本/fast_recovery_daemon.sh`。
 
 使用 procd 管理守护进程：
 ```bash
@@ -808,8 +813,8 @@ vi /etc/campus_network/auto_login.sh
 
 ### Q6：如何查看当前运行状态？
 ```bash
-# 外网连通性
-ping 8.8.8.8
+# 外网连通性（8.8.8.8 被校园网屏蔽，用 223.5.5.5）
+ping 223.5.5.5
 
 # WiFi 连接状态
 iw dev phy1-sta0 link
@@ -842,4 +847,4 @@ wg show
 
 > **最后更新**：2026-07-09
 > **项目仓库**：[Gitee](https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network) | [GitHub](https://github.com/Coder-Taylor/mi-ax3000t-henu-campus-network)
-> **相关文档**：[开发日志（按 Phase）](./开发日志.md) | [从零开始教程](./从零开始教程.md) | [HTML 版](./AX3000T校园网项目_完整学习笔记.html)
+> **相关文档**：[开发日志（按 Phase）](./开发日志.md) | [刷机指南](./刷机指南.md) | [日常使用](./日常使用.md) | [排障手册](./排障手册.md) | [HTML 版](./AX3000T校园网项目_完整学习笔记.html)

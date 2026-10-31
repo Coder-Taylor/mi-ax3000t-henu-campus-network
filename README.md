@@ -1,138 +1,95 @@
-# 校园网自动认证路由器系统 · 小米 AX3000T
+# 小米 AX3000T 校园网自动认证路由器
 
-> 基于 ImmortalWrt 的校园网自动认证方案，实现宿舍路由器无线接入 henu-student、Portal 全自动三步认证、断网秒级恢复与智能流控。
->
-> **说明**：本项目参考了 Jerry 的 HENU_autologin 方案（路由器刷机与校园网连接思路），在 AI（Claude Code）协作下独立完成适配与开发。核心 Shell 认证脚本、守护进程、CAKE 流控配置等均为自主编写。
-
-[![状态](https://img.shields.io/badge/状态-已完成-brightgreen)](https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network)
-[![平台](https://img.shields.io/badge/平台-MT7981B%20(AX3000T)-blue)]()
-[![AI](https://img.shields.io/badge/AI-Claude%20Code-9cf)]()
+把一台小米 AX3000T 刷成 OpenWrt，让它自己无线连上河南大学的 `henu-student`，
+自动完成校园网 Portal 认证，然后给整个宿舍发 WiFi。宿舍里任何人连上就能用，
+不用各自登录，也不用插网线。
 
 ---
 
-## 项目背景
+## 这条文档怎么读
 
-宿舍校园网 `henu-student` 采用 Portal 认证方式，每台设备需要手动登录，且认证有时效限制（不定期过期）。本项目让路由器做"中间人"——路由器连接校园网并自动认证，宿舍所有设备通过路由器共享网络，无需各自登录。
+按你的身份挑一份，不要从头读到尾。
 
----
+| 你想做什么 | 打开哪份 |
+|---|---|
+| **我要把一台原厂 AX3000T 刷成能上网的路由器** | [文档/刷机指南.md](文档/刷机指南.md) |
+| 路由器已经在用，我想改 WiFi 密码、加设备、查流量 | [文档/日常使用.md](文档/日常使用.md) |
+| 突然上不了网，我要排查 | [文档/排障手册.md](文档/排障手册.md) |
+| 我想搞懂为什么这么配、原理是什么 | [文档/原理详解.md](文档/原理详解.md) |
+| 我想看这台路由器现在到底配了什么 | [文档/路由器当前状态.md](文档/路由器当前状态.md) |
+| 我想看这个项目是怎么一步步做出来的 | [文档/开发日志.md](文档/开发日志.md) |
 
-## 实现的功能
-
-| 功能 | 说明 |
-|------|------|
-| ✅ **无线 WAN** | 路由器通过 5G WiFi（STA 模式）连接校园网，无需网线 |
-| ✅ **Portal 自动认证** | 三步认证全自动（获取参数→验证身份→门户登录），过期自动重连 |
-| ✅ **断网秒级恢复** | 守护进程每秒检测，网络中断 1-3 秒内自动恢复 |
-| ✅ **多设备共享** | LAN + 2.4G AP + 5G AP 同时在线，宿舍设备即连即用 |
-| ✅ **CAKE 智能流控** | 110Mbps 带宽动态分配，多人下载/打游戏互不干扰 |
-| ✅ **DNS 修复** | 校园网内部网站（教务/学工/图书馆）全部可访问 |
-| ✅ **WiFi 断联修复 v3** | DHCP 租期 168h + hostapd 配置对齐，解决设备重连导致的全屋断网 |
-| ✅ **流量监控** | nlbwmon 显示每台设备的实时流量与协议分布 |
-| ✅ **性能图表** | collectd + RRDtool 记录 CPU、内存、网络、延迟长周期数据 |
-| ✅ **VPN 远程访问** | WireGuard 客户端，外网可远程管理宿舍网络 |
-| ✅ **广告拦截** | dnsmasq 后端 adblock，185K+ 域名，全设备生效 |
+刷机需要用到的工具和固件都在 **`小米AX3000T刷机教程openwrt大分区版-干净原生.rar`**
+（152MB，存在仓库里，用 Git LFS 管理）。刷机指南里每一步都会说清楚该从 rar 里拿哪个文件。
 
 ---
 
-## 技术栈
-
-| 领域 | 技术 |
-|------|------|
-| 路由器系统 | ImmortalWrt 24.10.5（Linux 6.6，OpenWrt 衍生版） |
-| 配置管理 | UCI（统一配置接口） |
-| 网络协议 | WiFi STA+AP 双模 / DHCP / NAT (MASQUERADE+FULLCONENAT) / nftables |
-| 流控 | CAKE qdisc（Common Applications Kept Enhanced） |
-| 自动化 | Shell 脚本 + procd 守护进程 + cron 定时 |
-| 监控 | nlbwmon（流量） + collectd（系统性能） |
-| VPN | WireGuard（内核级，UDP NAT 穿透） |
-| DNS | dnsmasq + UCI 域名转发 + rebind 豁免 + 多层策 |
-| 开发工具 | **AI 协作（Claude Code）** / Shell / Python / PowerShell |
-
----
-
-## 项目结构
+## 它到底做了什么
 
 ```
-/
-├── 文档/
-│   ├── 从零开始教程.md            ← 完整小白教程（面向完全零基础）
-│   ├── 开发日志.md                ← 完整开发过程（按阶段，教学级，3500+行）
-│   ├── 开发日志_按日期.md          ← 按日期记录的项目经历
-│   ├── 学习笔记 (MD/HTML)          ← 技术博客风格的完整总结
-│   └── 脚本使用教程.md            ← 各脚本和监控工具的使用说明
-│
-├── 一键配置脚本/
-│   ├── deploy.py                  ← 一键部署工具（免手动配置）
-│   ├── auto_config.sh             ← 路由器一键配置脚本
-│   ├── fast_recovery_daemon.sh    ← 秒级断网恢复守护进程（核心组件）
-│   └── dns_fix.sh                 ← 校园内部网站 DNS 修复脚本
-│
-├── 监控工具/
-│   ├── monitor.py                 ← 实时监控 + 压力测试 + 对比分析（Python 三合一）
-│   └── test_results/              ← 压力测试数据存档
-│
-└── 小米AX3000T刷机教程openwrt大分区版/
-    └── step1解锁ssh/              ← XMiR-Patcher 刷机工具
+   henu-student（校园网 WiFi）
+        │
+        │  5G 无线客户端模式（STA）
+        ▼
+  ┌─────────────────────────┐
+  │   AX3000T / ImmortalWrt │
+  │                         │
+  │  auto_login.sh           │──→ 每 5 分钟检查认证，掉线自动重登
+  │  fast_recovery_daemon.sh │──→ 每秒检查网络，断了 1-3 秒恢复
+  │  CAKE 流控 110Mbps       │──→ 多人抢网时小包优先，打游戏不卡
+  │  DNS 四层修复            │──→ 教务/学工/图书馆等校内网站能开
+  └───────┬─────────┬───────┘
+          │         │
+     2.4G AP     5G AP
+          │         │
+       旧手机     笔记本 / 新手机
 ```
 
----
-
-## 部署方式
-
-```bash
-# 方式一：一键部署（推荐）
-# Windows 下双击 一键配置脚本\!START.bat
-
-# 方式二：SSH 手动部署
-ssh root@192.168.1.1
-# 路由器上执行一键配置
-sh /etc/campus_network/auto_config.sh
-
-# 方式三：分步部署（详细教程见文档/从零开始教程.md）
-```
-
-详细的部署步骤和故障排查请参阅 [从零开始教程](./文档/从零开始教程.md)。
+核心难点只有一个：校园网不是输一次密码就永久有效的。认证有有效期，过期后
+外网会被劫持到登录页。所以必须有"检测 + 自动重登"的循环，否则每天都要手动点一次。
 
 ---
 
-## 开发过程记录
+## 已经做好的部分
 
-本项目全流程记录于 [开发日志.md](./文档/开发日志.md)（3500+行，教学级文档），内容涵盖：
-
-| 阶段 | 内容 |
-|------|------|
-| 步骤 0 | 路由器刷机（XMiR-Patcher 解锁 SSH → 备份 Factory → 刷入 ImmortalWrt）|
-| Phase 0 | 前置基础概念（SSH/OverlayFS/UCI/NAT/WiFi 模式/守护进程等）|
-| Phase 1-5 | 安全加固 → WiFi WAN → 认证脚本 → 定时重连 + NAT 修复 |
-| Phase 6-7 | CAKE 流控 + Argon 主题美化 |
-| Phase 8-10 | 设备重连断网修复（v1 频宽对齐 → v2 守护进程 → v3 终极方案）|
-| Phase 11 | WireGuard VPN + NTP + nlbwmon + collectd 全栈监控 |
-| Phase 12-13 | 启动循环修复 + DHCP/hostapd 深度调优 |
+| 能力 | 实现方式 |
+|---|---|
+| 无线 WAN | 5G 射频改成 STA 模式连 `henu-student`，不用网线 |
+| 自动认证 | 三步 HTTP 认证（验证账号 → 二次校验 → 门户登录），全部脚本化 |
+| 掉线自愈 | 守护进程每秒检查路由，命中不同故障等级用不同手段恢复 |
+| 认证过期兜底 | cron 每 5 分钟跑一次认证脚本 |
+| 小包不卡 | CAKE 流控，烧瓶形缓冲，下载跑满时延迟只涨 2-3ms |
+| 校内网站 | hosts 写死 + DNS 分流 + rebind 豁免 + 过滤 IPv6，四层 |
+| 广告拦截 | dnsmasq 后端 adblock，18 万条规则，全设备生效 |
+| 远程管理 | WireGuard 客户端，外网可进路由器后台 |
+| 流量/性能监控 | nlbwmon 看每台设备流量，collectd 出长周期图表 |
 
 ---
 
-## 开发方式说明
+## 你需要准备什么
 
-本项目使用 **Claude Code（AI 代码助手）作为主要协作工具**完成开发。具体协作方式：
+- 小米 AX3000T 一台。**必须是 MT7981 版本**，不是 RD03v2（那个是高通 IPQ5018，固件不通用）
+- 原装电源
+- 一根网线
+- 一台 Windows 电脑
+- 河南大学的校园网账号（学号 + 密码，运营商后缀 `@henuyd`）
 
-- **需求转化为实现**：描述需求场景（如"检测网络断开后自动恢复"），由 AI 生成初始代码，人工审核后部署测试
-- **故障排查**：路由器运行时出现异常（如认证失败、WiFi 断连），将日志反馈给 AI 分析根因，获得修复方案
-- **文档编写**：所有文档（开发日志、教程、学习笔记）均由 AI 在人工指导下撰写，确保技术准确性
-- **迭代优化**：修复方案部署后观察效果，持续反馈给 AI 进行改进（如断网恢复从 cron 20秒 → 守护进程 1秒）
+不需要拆机、不需要 TTL 串口、不需要编程器。全程软件操作。
 
-这种协作方式**大幅降低了嵌入式 Linux 开发的入门门槛**，使大一学生能够独立完成从刷机到生产级部署的全流程。
+---
+
+## 三句话讲完的风险说明
+
+1. 刷机会清空原厂系统。**刷机前必须做全分区备份**，刷机指南第二步就是这件事，别跳过。
+2. 只要不动 BL2 和 FIP 两个分区，路由器几乎不可能变砖；真出问题还能用小米的修复工具刷回原厂。
+3. 这套方案让路由器代你认证。学校如果查"一账号多设备"，理论上能查到。风险自担。
 
 ---
 
 ## 相关链接
 
-- [GitHub](https://github.com/Coder-Taylor/mi-ax3000t-henu-campus-network)
-- [Gitee](https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network)
-- [开发总结（Markdown）](./文档/Mi-AX3000T路由器开发总结.md)
-- [完整学习笔记（HTML）](./文档/AX3000T校园网项目_完整学习笔记.html)
+- 仓库：[GitHub](https://github.com/Coder-Taylor/mi-ax3000t-henu-campus-network) ｜ [Gitee](https://gitee.com/taylorchengitee/mi-ax3000t-henu-campus-network)
+- 刷机工具：[XMiR-Patcher](https://github.com/openwrt-xiaomi/xmir-patcher)（已打包在 rar 里，不用另外下）
+- 固件：[ImmortalWrt](https://download.immortalwrt.org/)（已打包在 rar 里）
 
----
-
-## 许可证
-
-[MIT License](./LICENSE)
+MIT License
