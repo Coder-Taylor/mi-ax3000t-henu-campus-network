@@ -47,7 +47,7 @@ Portal 认证，给宿舍发 WiFi。
 │   ├── route_watchdog.sh           开机早期加速 STA 重连
 │   ├── campus_auth.init            开机认证服务
 │   ├── crontab.root                crontab 模板
-│   ├── dns_fix.sh                  DNS 四层修复 v2.2
+│   ├── dns_fix.sh                  DNS 五层修复 v2.3
 │   └── !START.bat / !PUSH_ALL.bat  Windows 双击入口
 │
 ├── 监控工具/
@@ -135,11 +135,30 @@ ubus call network.interface.wwan down; sleep 2; ubus call network.interface.wwan
 **改用** `uci add_list dhcp.@dnsmasq[0].rebind_domain='...'`。
 验证：`grep rebind /var/etc/dnsmasq.conf.cfg*`。
 
+### 上游 DNS 不能用校园下发的那两个
+
+`111.6.174.198` 和 `114.114.114.114` 实测各约 20% 查询超时重传，单次卡 2.5s。
+**症状极具迷惑性**：视频/图片一直转圈，但大文件下载速度正常（下载只解析一次域名）；
+电脑也常看不出来（系统 DNS 缓存厚）。
+
+配置（`noresolv=1` 让 dnsmasq 忽略 `/tmp/resolv.conf.d/resolv.conf.auto`）：
+
+```sh
+uci set dhcp.@dnsmasq[0].noresolv='1'
+uci add_list dhcp.@dnsmasq[0].server='223.5.5.5'
+uci add_list dhcp.@dnsmasq[0].server='119.29.29.29'
+uci add_list dhcp.@dnsmasq[0].server='/henu.edu.cn/111.6.174.198'
+```
+
+`henu.edu.cn` 整域仍走校园 DNS（内网域名公网解析不到）。
+诊断先看 `/overlay/probe.log` 里 `dns=` 和 `ttfb=` 的拆分。
+
 ### busybox 缺的工具
 
 没有：`base64`、`od`、`diff`、`timeout` 的部分参数。
 `sleep` 不支持小数，`ping` 不支持 `-i 0.2` / `-f`。
 `wget` 抓 HTTPS 跨主机重定向会段错误 → 用 `curl`。
+`date +%s%N` 的 `%N` 不支持，返回空 → 计时用 `/proc/uptime` 相减。
 
 ### SSH 密钥
 

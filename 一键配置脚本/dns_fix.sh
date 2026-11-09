@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-#  校园网 DNS 修复脚本 v2.2
+#  校园网 DNS 修复脚本 v2.3
 #  修复：WiFi下无法访问校园网内部网站 + 防止设备重连断联
 #
 #  问题1: 校园 DHCP DNS (111.6.174.198) 返回不可达IP 或 解析为空
@@ -17,11 +17,19 @@
 #  问题3: DNS返回IPv6, 但路由器无IPv6路由
 #     → filter_aaaa=1 (全局过滤AAAA)
 #
+#  问题4: 上游DNS丢包导致偶发 2.5s / 5s 解析停顿
+#     校园DNS(111.6.174.198) 与 114.114.114.114 实测均有 ~20% 查询
+#     超时重传（实测 2026-11-09: 111.6.174.198 slow=11/60 最大5.0s,
+#     114.114.114.114 slow=14/60 最大2.55s, 223.5.5.5 slow=0/60）
+#     表现：手机/平板看视频、刷图一直转圈，但大文件下载速度正常
+#     → noresolv=1 + 223.5.5.5/119.29.29.29 作为默认上游
+#       henu.edu.cn 仍走校园DNS（内网域名）
+#
 #  用法：在路由器上运行  sh dns_fix.sh
 # ============================================================
 
 echo "================================================="
-echo " 校园网 DNS 修复工具 v2.2 (含 Phase 13 DHCP 调优)"
+echo " 校园网 DNS 修复工具 v2.3 (换上游 + Phase 13 DHCP 调优)"
 echo "================================================="
 echo ""
 
@@ -75,6 +83,34 @@ done
 uci set dhcp.@dnsmasq[0].filter_aaaa='1'
 echo "  [set]  filter_aaaa=1 (过滤IPv6)"
 
+# === Fix 3.5: 换掉丢包的上游 DNS（手机看视频转圈的根因） ===
+# 校园DHCP下发的 111.6.174.198 和 114.114.114.114 实测都有约 20% 查询
+# 要重传，单次卡 2.5s（丢两次卡 5s）。阿里DNS 60/60 全部正常。
+# noresolv=1 让 dnsmasq 不再读 /tmp/resolv.conf.d/resolv.conf.auto。
+if [ "$(uci get dhcp.@dnsmasq[0].noresolv 2>/dev/null)" != "1" ]; then
+    uci set dhcp.@dnsmasq[0].noresolv='1'
+    echo "  [set]  noresolv=1 (忽略ISP下发的nameserver)"
+else
+    echo "  [skip] noresolv=1 (已设置)"
+fi
+
+for dns in 223.5.5.5 119.29.29.29; do
+    if uci show dhcp 2>/dev/null | grep -q "'${dns}'"; then
+        echo "  [skip] 默认上游 ${dns} (已存在)"
+    else
+        uci add_list dhcp.@dnsmasq[0].server="$dns"
+        echo "  [add]  默认上游 ${dns}"
+    fi
+done
+
+# henu.edu.cn 整个域走校园DNS（内网域名，公网解析不到）
+if uci show dhcp 2>/dev/null | grep -q "server.*/henu.edu.cn/111.6.174.198"; then
+    echo "  [skip] henu.edu.cn -> 111.6.174.198 (已存在)"
+else
+    uci add_list dhcp.@dnsmasq[0].server="/henu.edu.cn/111.6.174.198"
+    echo "  [add]  henu.edu.cn -> 111.6.174.198"
+fi
+
 # === Fix 4: 允许 henu.edu.cn/ntp.org.cn 返回 RFC1918 私有IP ===
 if grep -q 'rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/' /etc/dnsmasq.conf; then
     echo "  [skip] rebind-domain-ok=/henu.edu.cn/ /ntp.org.cn/ (已存在)"
@@ -104,7 +140,10 @@ uci commit dhcp
 sleep 2
 
 echo ""
-echo "=== 验证 ==="
+echo "=== 验证上游 ==="
+grep -E '^server=' /var/etc/dnsmasq.conf.cfg* | sed 's/^/  /'
+echo ""
+echo "=== 验证域名 ==="
 for d in zwyy.henu.edu.cn software.henu.edu.cn net.henu.edu.cn jwgl.henu.edu.cn xg.henu.edu.cn superhuazai.me; do
     IP=$(nslookup $d 2>&1 | grep -oE 'Address: [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
     if [ -z "$IP" ]; then
