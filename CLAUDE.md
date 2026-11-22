@@ -52,6 +52,9 @@ Portal 认证，给宿舍发 WiFi。
 │
 ├── 监控工具/
 │   ├── probe_stall.sh              卡顿探针（路由器上跑，cron 每分钟）
+│   ├── probe_handshake.sh          握手探针（DNS/TCP/TLS 三段计时，cron 每分钟）
+│   ├── kick_weak.sh                弱终端剔除（cron 每 2 分钟）
+│   ├── repro_download.sh           主动压测，复现资源下载场景（手动）
 │   ├── monitor.py                  电脑端实时监控/压测/对比
 │   └── gen_stress_image.py         压测图表
 │
@@ -83,6 +86,8 @@ Portal 认证，给宿舍发 WiFi。
 | 开机服务 | `/etc/init.d/campus_auth`（S99）、`/etc/init.d/fast_recovery`（S98） |
 | 认证日志 | `/tmp/campus_network.log`（`/tmp` 重启清空） |
 | 卡顿探针日志 | `/overlay/probe.log` |
+| 握手探针日志 | `/overlay/handshake.log` |
+| 弱终端剔除日志 | `/overlay/kick.log` |
 | 崩溃现场 | `/sys/fs/pstore/`（只 4 块，满了显示 ENOSPC） |
 | crontab | `/etc/crontabs/root` |
 
@@ -135,8 +140,45 @@ ubus call network.interface.wwan down; sleep 2; ubus call network.interface.wwan
 **改用** `uci add_list dhcp.@dnsmasq[0].rebind_domain='...'`。
 验证：`grep rebind /var/etc/dnsmasq.conf.cfg*`。
 
-### 上游 DNS 不能用校园下发的那两个
+### 局域网不能发没有出口的 IPv6
 
+odhcpd 会一直发 `fddd:ec86:845a::/60` 的 ULA 地址，但路由器没有 IPv6 默认路由。
+设备拿到地址后优先试 IPv6，等到超时才回退 IPv4，App 首包/握手就卡在那一两秒。
+
+日志线索：`logread | grep odhcpd` 反复报
+`No default route present, setting ra_lifetime to 0!`
+
+必须是：
+
+```sh
+uci get dhcp.lan.ra                    # disabled
+uci show network.lan | grep ip6assign  # 无输出
+ip -6 addr show br-lan | grep fddd     # 无输出
+/etc/init.d/odhcpd status              # 未运行
+```
+
+改完**必须让设备重新拿地址**（手机飞行模式一次），旧 ULA 有效期约 1 小时。
+
+### 弱终端会拖慢整个空口
+
+-96/-97 dBm 的终端用 6 Mbit/s 最低速率反复重传，每帧占满一个空口时隙，
+其它设备首包排队。**看不出来**，因为它自己已经没在传数据了。
+
+用 `/root/kick_weak.sh` 清理（三条件同时满足：信号 ≤ -85 dBm + 空闲 ≥ 300s
++ 失败率 ≥ 5%）。先 `DRY_RUN=1` 预演。
+
+**不要用 `disassoc_low_ack=1`**：那是 hostapd 连续失败计数，一次性触发、
+不可控、会连锁断掉正常设备。
+
+### 路由器自身的 TLS 慢，不代表客户端慢
+
+MT7981 双核 A53 做非对称加密：单发 0.33s，8 并发线性增长到 1.4s。
+但手机/电脑自己握手只要 0.05s，路由器只转发不参与加解密。
+
+**排查时不要被这个误导**。测网络要从客户端测；从路由器 curl 测到的 TLS 耗时
+只反映它自己的 CPU 性能。
+
+### 上游 DNS 不能用校园下发的那两个
 `111.6.174.198` 和 `114.114.114.114` 实测各约 20% 查询超时重传，单次卡 2.5s。
 **症状极具迷惑性**：视频/图片一直转圈，但大文件下载速度正常（下载只解析一次域名）；
 电脑也常看不出来（系统 DNS 缓存厚）。
